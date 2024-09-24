@@ -111,28 +111,111 @@ export default function DaiunTable({width,response,step}) {
                 </th>
             </tr>
             <tr>
-                <th>年</th>
-                {
+                <th>年柱</th>
+                <td>･</td>
+                {response ? (
+                    response.daiun_table.daiun.kan.map((kan, i) => {
+                        return (
+                            <td key={i} className='vt daiun-col'>
+                                <li>
+                                    { kan.relation.year["干合"] ? `${response.tenkan[1]}${kan.element}干合(${kan.relation.year["干合"]})` : ""}
+                                </li>
+                            {/* 地支 */}
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.year["支合"] ? `${response.chishi[0]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.year["支合"]})` : ""}
+                                </li>
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.year["七冲"] ? `${response.chishi[0]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                </li>
+                            </td>
+                        );
+                    })
+                ) : (
                     Array.from({ length: step }, (_, i) => (
                         <td key={i}>-</td>
                     ))
-                }
+                )}
+             
+             
             </tr>
             <tr>
-                <th>月</th>
-                {
+                <th>月柱</th>
+                <td>･</td>
+                {response ? (
+                    response.daiun_table.daiun.kan.map((kan, i) => {
+                        return (
+                            <td key={i} className='vt daiun-col'>
+                                <li>
+                                    { kan.relation.month["干合"] ? `${response.tenkan[1]}${kan.element}干合(${kan.relation.month["干合"]})` : ""}
+                                </li>
+                            {/* 地支 */}
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.month["支合"] ? `${response.chishi[1]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.month["支合"]})` : ""}
+                                </li>
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.month["七冲"] ? `${response.chishi[1]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                </li>
+                            </td>
+                        );
+                    })
+                ) : (
                     Array.from({ length: step }, (_, i) => (
                         <td key={i}>-</td>
                     ))
-                }
+                )}
+             
             </tr>
             <tr>
-                <th>日</th>
-                {
+                <th>日柱</th>
+                <td>･</td>
+                {response ? (
+                    response.daiun_table.daiun.kan.map((kan, i) => {
+                        return (
+                            <td key={i} className='vt daiun-col'>
+                                <li>
+                                    { kan.relation.day["干合"] ? `${response.tenkan[2]}${kan.element}干合(${kan.relation.day["干合"]})` : ""}
+                                </li>
+                            {/* 地支 */}
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.day["支合"] ? `${response.chishi[2]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.day["支合"]})` : ""}
+                                </li>
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.day["七冲"] ? `${response.chishi[2]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                </li>
+                            </td>
+                        );
+                    })
+                ) : (
                     Array.from({ length: step }, (_, i) => (
                         <td key={i}>-</td>
                     ))
-                }
+                )}
+            </tr>
+            <tr>
+                <th>時柱</th>
+                <td>･</td>
+                {response ? (
+                    response.daiun_table.daiun.kan.map((kan, i) => {
+                        return (
+                            <td key={i} className='vt daiun-col'>
+                                <li>
+                                    { kan.relation.time["干合"] ? `${response.tenkan[3]}${kan.element}干合(${kan.relation.time["干合"]})` : ""}
+                                </li>
+                            {/* 地支 */}
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.time["支合"] ? `${response.chishi[3]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.time["支合"]})` : ""}
+                                </li>
+                                <li>
+                                    { response.daiun_table.daiun.shi[i].relation.time["七冲"] ? `${response.chishi[3]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                </li>
+                            </td>
+                        );
+                    })
+                ) : (
+                    Array.from({ length: step }, (_, i) => (
+                        <td key={i}>-</td>
+                    ))
+                )}
             </tr>
 
           

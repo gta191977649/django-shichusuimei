@@ -107,6 +107,10 @@ rb, rt {
 .vt {
   writing-mode: vertical-rl;
 }
+.daiun-col {
+  padding: 5px;
+
+}
 .daiun-col:hover {
   background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #ffffff), color-stop(100%, #EEEBDE));
   background-image: -webkit-linear-gradient(top, #ffffff 0%, #eeebde 100%);
@@ -120,4 +124,9 @@ rb, rt {
 .text-element {
   padding: 5px;
   font-size: 20px;
+}
+
+.daiun-col li {
+  list-style-type: none;
+  /* text-align: left; */
 }

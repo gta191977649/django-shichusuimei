@@ -155,6 +155,57 @@ class Meishi:
         ["申", "酉", "戌", "亥", "子", "丑", "寅", "卯", "辰", "巳", "午", "未"],  # 壬
         ["卯", "寅", "丑", "子", "亥", "戌", "酉", "申", "未", "午", "巳", "辰"]  # 癸
     ]
+
+    # 干合 (天干)
+    kangou = {
+        "土": ["甲", "己"],
+        "金": ["乙", "庚"],
+        "水": ["丙", "辛"],
+        "木": ["丁", "壬"],
+        "火": ["戊", "癸"],
+    }
+    # 支合 (地支)
+    shigou = {
+        "土": ["子", "丑"],
+        "金": ["辰", "酉"],
+        "水": ["申", "巳"],
+        "木": ["寅", "亥"],
+        "火": ["午", "未"],
+    }
+    # 七冲 (地支)
+    chichu = [
+        ["午", "子"],
+        ["未", "丑"],
+        ["申", "寅"],
+        ["酉", "卯"],
+        ["戌", "辰"],
+        ["亥", "巳"],
+    ]
+
+    def check_chichu(self, shi_1, shi_2):
+        # Create a set of the input 地支
+        shi_pair = {shi_1, shi_2}
+
+        # Check against each 七冲 pair in the list
+        for pair in self.chichu:
+            if set(pair) == shi_pair:
+                return True
+
+        # If no match is found, return False
+        return False
+    def check_kangou(self, kan_1, kan_2):
+        shi_pair = {kan_1, kan_2}
+        for element, pair in self.kangou.items():
+            if set(pair) == shi_pair:
+                return element
+        return None
+
+    def check_shigou(self, shi_1, shi_2):
+        shi_pair = {shi_1, shi_2}
+        for element, pair in self.shigou.items():
+            if set(pair) == shi_pair:
+                return element
+        return None
     # 蔵干に取って
     def getZoukan(self,element):
         return Meishi.zoukan[element]
@@ -213,7 +264,21 @@ class Meishi:
             daiun_kanshi["kan"].append({
                 "element": element,
                 "tsuhen": Meishi.tsuhen[junshi_idx],
-                "seiun": "-" #星運
+                "seiun": "-", #星運
+                "relation": {
+                    "year": {
+                        "干合": self.check_kangou(self.tenkan[0], element),
+                    },
+                    "month":{
+                        "干合": self.check_kangou(self.tenkan[1], element),
+                    },
+                    "day": {
+                        "干合":self.check_kangou(self.tenkan[2], element),
+                    },
+                    "time":{
+                        "干合":self.check_kangou(self.tenkan[3], element),
+                    }
+                }
             })
         #print(daiun_kanshi)
 
@@ -237,6 +302,24 @@ class Meishi:
                 "element": element,
                 "zoukan": zoukan_junshi,
                 "seiun":  self.getJuniunboshi(self.higen,element), # 大運星運の方、日干と大運の地支に求めて
+                "relation": { # 刑･冲･合
+                    "year":{
+                        "支合": self.check_shigou(self.chishi[0],element),
+                        "七冲": self.check_chichu(self.chishi[0],element),
+                    },
+                    "month": {
+                        "支合": self.check_shigou(self.chishi[1], element),
+                        "七冲": self.check_chichu(self.chishi[1], element),
+                    },
+                    "day": {
+                        "支合": self.check_shigou(self.chishi[2], element),
+                        "七冲": self.check_chichu(self.chishi[2], element),
+                    },
+                    "time": {
+                        "支合": self.check_shigou(self.chishi[3], element),
+                        "七冲": self.check_chichu(self.chishi[3], element),
+                    },
+                }
             })
             #print(element, zoukan_junshi)
         print(daiun_kanshi)
@@ -510,6 +593,8 @@ if __name__ == '__main__':
     date = datetime.datetime(1997, 2, 7, 9, 25)
 
     meishi = Meishi(date)
+    kankou = meishi.check_kangou("己","甲")
+    print(kankou)
     #y,m,debug = meishi.getRitsunTime()
 
     # print(y,m)
