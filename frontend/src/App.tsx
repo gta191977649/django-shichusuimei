@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
-import Home from "./pages/Home"
-import NotFound from "./pages/NotFound"
+import Home from "./page/Home"
+import NotFound from "./page/NotFound"
 
 function App() {
   const [count, setCount] = useState(0)
