@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@100;300;400;500;700;800;900&family=Noto+Serif+JP:wght@200..900&family=Zen+Maru+Gothic:wght@300;400;500;700;900&display=swap');
+
 body {
-  font-family: "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif;
+  font-family: "Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", "simsun",serif;
 }
 
 table, th, td {
@@ -11,6 +13,7 @@ table, th, td {
 
 th {
   background-color: #CCFFCC;
+  font-weight: bold;
 }
 .td-buttom {
   /* background-color: #FFCC99; */
@@ -21,6 +24,7 @@ th {
   background-image: -o-linear-gradient(top, #ffffff, #EEEBDE);
   background-image: linear-gradient(top, #ffffff, #EEEBDE);
   cursor: pointer;
+  
 }
 .td-buttom:hover {
   border: 1px solid #000;
