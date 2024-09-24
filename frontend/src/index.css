@@ -1,0 +1,115 @@
+body {
+  font-family: "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho", serif;
+}
+
+table, th, td {
+  border-collapse: collapse;
+  border: 1px solid;
+  text-align: center;
+  padding: 0px;
+}
+
+th {
+  background-color: #CCFFCC;
+}
+.td-buttom {
+  /* background-color: #FFCC99; */
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #ffffff), color-stop(100%, #EEEBDE));
+  background-image: -webkit-linear-gradient(top, #ffffff 0%, #eeebde 100%);
+  background-image: -moz-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: -ms-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: -o-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: linear-gradient(top, #ffffff, #EEEBDE);
+  cursor: pointer;
+}
+.td-buttom:hover {
+  border: 1px solid #000;
+  background-image: -webkit-linear-gradient(top, #ffffff 0%, #dfd9c1 100%);
+  color: 1px solid #595233;
+}
+
+.table-input {
+  width: 90%;
+  border:0;outline:0;
+  text-align: center;
+  background-color: transparent;
+  font-weight: bold;
+ 
+}
+.require {
+  background-color: #FFFF99;
+  border: 1.5px solid #FF3300;
+  border-radius: 1px;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 0;
+
+  /* Position the tooltip */
+  position: absolute;
+  left: 120px;
+  z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+.display-linebreak {
+  white-space: pre-line;
+}
+summary::-webkit-details-marker {
+  color: blue;
+}
+summary:focus {
+  outline-style: none;
+}
+
+
+
+ruby {
+  display: inline-flex;
+  writing-mode: vertical-rl;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+}
+
+rb, rt {
+  padding: 0px;
+  margin: 0px;
+  margin-left: -5px;
+}
+.text-five-status {
+  padding: 5px;
+  font-size: 20px;
+}
+
+.text-required {
+  color: #FF3300;
+}
+
+.vt {
+  writing-mode: vertical-rl;
+}
+.daiun-col:hover {
+  background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #ffffff), color-stop(100%, #EEEBDE));
+  background-image: -webkit-linear-gradient(top, #ffffff 0%, #eeebde 100%);
+  background-image: -moz-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: -ms-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: -o-linear-gradient(top, #ffffff, #EEEBDE);
+  background-image: linear-gradient(top, #ffffff, #EEEBDE);
+  cursor: pointer;
+}
+
