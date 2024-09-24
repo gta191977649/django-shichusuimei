@@ -113,3 +113,6 @@ rb, rt {
   cursor: pointer;
 }
 
+.text-element {
+  padding: 5px;
+}
