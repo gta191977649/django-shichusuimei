@@ -215,7 +215,7 @@ class Meishi:
         dates = {term: date for term, date in self.date.thisYearSolarTermsDic.items() if term in setsu_terms}
         return dates
     # 大運計算
-    def daiunList(self, unjun_type, unjun_step=11):
+    def getDaiunList(self, unjun_type, unjun_step=11):
         # 1. 月柱の干支を取得
         getsu_kan = self.tenkan[1]
         getsu_shi = self.chishi[1]
@@ -321,10 +321,73 @@ class Meishi:
                     },
                 }
             })
-            #print(element, zoukan_junshi)
-        print(daiun_kanshi)
+
 
         return daiun_kanshi
+    # 年運計算
+    def getYearList(self,unjun_step=11):
+        # 立運時間に取って
+        # self.ritsun = {
+        #     "unjun_type": unjun_type,
+        #     "year": y,
+        #     "month": m,
+        #     "note": ritsuun_note,
+        #     "unjun_type": unjun_type,  # 運行順：１順行、２逆行
+        # }
+        year = self.ritsun["year"]
+        month = self.ritsun["month"]
+        higen_idx = Meishi.kan.index(self.higen)
+        year = (self.birthdate.year + year) + 1 if month > 4 else (self.birthdate.year + year)
+        # 年間推算（立運時始まる）
+        year_list = []
+        for i in range(unjun_step):
+            daiun_time = i * 10
+
+            print("大運",daiun_time)
+            yearlist = []
+            for j in range(daiun_time,daiun_time+unjun_step-1):
+                if year + j < 2100:
+                    y = cnlunar.Lunar(datetime.datetime(year + j,3,1,1,1), godType='8char')
+                    print(y.year8Char,year + j)
+                    kan_idx = Meishi.kan.index(y.year8Char[0])
+                    kan_idx_tsuhen_idx = Meishi.kan_tsuhen[higen_idx].index(kan_idx)
+                    # 蔵干
+                    shi_zoukan = self.getZoukan(y.year8Char[1])
+                    zoukan_junshi = []
+                    for zoukan in shi_zoukan:
+                        if zoukan:  # 蔵干はなしの場所にあり
+                            element_idx = Meishi.kan.index(zoukan)
+                            junshi_idx = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+                            zoukan_junshi.append({
+                                "element": zoukan,
+                                "tsuhen": Meishi.tsuhen[junshi_idx],
+                            })
+                        else:
+                            zoukan_junshi.append("")
+                    yearlist.append({
+                        "age": (j+1),
+                        "year": year + j,
+                        "kan": {
+                            "element":y.year8Char[0],
+                            "tsuhen":Meishi.tsuhen[kan_idx_tsuhen_idx],
+                        },
+                        "shi": {
+                            "element":y.year8Char[1],
+                            "tsuhen":zoukan_junshi[-1]["tsuhen"],
+                            "zoukan":zoukan_junshi,
+                            "seiun": self.getJuniunboshi(self.higen, y.year8Char[1]),
+                        }
+
+                    })
+                else: break
+
+            # List append
+            year_list.append({
+                "daiun": daiun_time,
+                "list": yearlist
+            })
+        #print(year_list)
+        return year_list
     # 立運計算
     def getRitsunTime(self):
         output_steps = ""
@@ -585,8 +648,8 @@ class Meishi:
             "unjun_type": unjun_type, #運行順：１順行、２逆行
         }
         # 大運時間推算
-        self.daiunList = self.daiunList(unjun_type)
-
+        self.daiunList = self.getDaiunList(unjun_type)
+        self.yearList = self.getYearList()
         print("OK")
 
 if __name__ == '__main__':

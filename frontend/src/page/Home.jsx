@@ -45,7 +45,7 @@ export default function Home() {
     <>
       <div>
         NURUPOの四柱推命分析 (専門家用DEBUG PAGE)
-        <br/>(三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る。)
+        <br/>三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る。
       </div>
       {/* 名前入力 */}
       <table style={{width:tableWidth}}>

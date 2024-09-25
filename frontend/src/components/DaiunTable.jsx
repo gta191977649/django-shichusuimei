@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import {Collapse} from 'react-collapse';
 import Element from '../components/Element';
 
 export default function DaiunTable({width,response,step}) {
@@ -20,6 +21,7 @@ export default function DaiunTable({width,response,step}) {
         return year
     }
     return (
+        <>
         <table style={{width:width}}>
             <tr>
                 <th colSpan={step+1}>
@@ -110,6 +112,7 @@ export default function DaiunTable({width,response,step}) {
                    刑･冲･合
                 </th>
             </tr>
+            
             <tr>
                 <th>年柱</th>
                 <td>･</td>
@@ -125,18 +128,18 @@ export default function DaiunTable({width,response,step}) {
                                     { response.daiun_table.daiun.shi[i].relation.year["支合"] ? `${response.chishi[0]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.year["支合"]})` : ""}
                                 </li>
                                 <li>
-                                    { response.daiun_table.daiun.shi[i].relation.year["七冲"] ? `${response.chishi[0]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                    { response.daiun_table.daiun.shi[i].relation.year["七冲"] ? `${response.chishi[0]}${response.daiun_table.daiun.shi[i].element}七沖` : ""}
                                 </li>
                             </td>
                         );
                     })
                 ) : (
-                    Array.from({ length: step }, (_, i) => (
+                    Array.from({ length: step-1}, (_, i) => (
                         <td key={i}>-</td>
                     ))
                 )}
-             
-             
+            
+            
             </tr>
             <tr>
                 <th>月柱</th>
@@ -153,17 +156,17 @@ export default function DaiunTable({width,response,step}) {
                                     { response.daiun_table.daiun.shi[i].relation.month["支合"] ? `${response.chishi[1]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.month["支合"]})` : ""}
                                 </li>
                                 <li>
-                                    { response.daiun_table.daiun.shi[i].relation.month["七冲"] ? `${response.chishi[1]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                    { response.daiun_table.daiun.shi[i].relation.month["七冲"] ? `${response.chishi[1]}${response.daiun_table.daiun.shi[i].element}七沖` : ""}
                                 </li>
                             </td>
                         );
                     })
                 ) : (
-                    Array.from({ length: step }, (_, i) => (
+                    Array.from({ length: step-1 }, (_, i) => (
                         <td key={i}>-</td>
                     ))
                 )}
-             
+            
             </tr>
             <tr>
                 <th>日柱</th>
@@ -180,13 +183,13 @@ export default function DaiunTable({width,response,step}) {
                                     { response.daiun_table.daiun.shi[i].relation.day["支合"] ? `${response.chishi[2]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.day["支合"]})` : ""}
                                 </li>
                                 <li>
-                                    { response.daiun_table.daiun.shi[i].relation.day["七冲"] ? `${response.chishi[2]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                    { response.daiun_table.daiun.shi[i].relation.day["七冲"] ? `${response.chishi[2]}${response.daiun_table.daiun.shi[i].element}七沖` : ""}
                                 </li>
                             </td>
                         );
                     })
                 ) : (
-                    Array.from({ length: step }, (_, i) => (
+                    Array.from({ length: step-1 }, (_, i) => (
                         <td key={i}>-</td>
                     ))
                 )}
@@ -206,19 +209,20 @@ export default function DaiunTable({width,response,step}) {
                                     { response.daiun_table.daiun.shi[i].relation.time["支合"] ? `${response.chishi[3]}${response.daiun_table.daiun.shi[i].element}支合(${response.daiun_table.daiun.shi[i].relation.time["支合"]})` : ""}
                                 </li>
                                 <li>
-                                    { response.daiun_table.daiun.shi[i].relation.time["七冲"] ? `${response.chishi[3]}${response.daiun_table.daiun.shi[i].element}七冲` : ""}
+                                    { response.daiun_table.daiun.shi[i].relation.time["七冲"] ? `${response.chishi[3]}${response.daiun_table.daiun.shi[i].element}七沖` : ""}
                                 </li>
                             </td>
                         );
                     })
                 ) : (
-                    Array.from({ length: step }, (_, i) => (
+                    Array.from({ length: step-1 }, (_, i) => (
                         <td key={i}>-</td>
                     ))
                 )}
             </tr>
-
-          
+            
         </table>
+
+        </>
     )
 }

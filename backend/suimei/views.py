@@ -52,7 +52,8 @@ class SuimeiView(APIView):
             "shi_type_note":meishi.shin_type_note,
             "ritsun_time": meishi.ritsun,
             "daiun_table": {
-                "daiun": meishi.daiunList
+                "daiun": meishi.daiunList,
+                "year_table":meishi.yearList,
             }
         }  # Your custom JSON data
         print(meishi.daiunList)
