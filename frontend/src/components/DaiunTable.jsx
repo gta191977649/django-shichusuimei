@@ -4,7 +4,7 @@ import Element from '../components/Element';
 
 export default function DaiunTable({width,response,step}) {
     const [ritsnun_age,setRitsunAge] = useState(0)
-
+    const [daiun_idx,setDaiun] = useState(0)
     useEffect(()=>{
         if (response && response.ritsun_time) {  // Check if response and response.ritsun_time are defined
             let age = ritsuun_age_calculate(response.ritsun_time.year, response.ritsun_time.month);
@@ -224,10 +224,13 @@ export default function DaiunTable({width,response,step}) {
         </table>
         
         <br/>
-        <table style={{width:width}}>
+        <table>
             <tr>
-                <th style={{width:100}}>鑑定分野</th>
-                <td  colSpan={11}>
+                <th colSpan={12}>流年</th>
+            </tr>
+            <tr>
+                <th>鑑定分野</th>
+                <td colSpan={11}>
                     <select className='table-input' name="gender" id="gender">
                         <option value={0}>恋愛･結婚運</option>
                         <option value={1}>仕事･金･運</option>
@@ -235,14 +238,41 @@ export default function DaiunTable({width,response,step}) {
                 </td>
             </tr>
             <tr>
-                <th colSpan={12}>流年</th>
+                <th>大運</th>
+                <td colSpan={11}>
+                    <input className='table-input' type="number" min={0} max={10} onChange={e => setDaiun(e.target.value)} value={daiun_idx}/>
+                </td>
             </tr>
+           
             <tr>
                 <th>年</th>
                 {response ? (
                     // Assuming 'response' has an array 'years' that you want to map over
-                    response.year_table.map((year, i) => (
-                        <td key={i}>{year}</td>  // Display data from the response
+                    response.daiun_table.year_table[daiun_idx].list.map((ryo_nen, i) => (
+                        <td key={i}>{ryo_nen.year}</td>  // Display data from the response
+                    ))
+                ) : (
+                    // If no response, generate cells with indices
+                    Array.from({ length: step-1 }, (_, i) => (
+                        <td key={i}>{i}</td>
+                    ))
+                )}
+            </tr>
+            <tr>
+                <th>流年</th>
+                {response ? (
+                    // Assuming 'response' has an array 'years' that you want to map over
+                    response.daiun_table.year_table[daiun_idx].list.map((ryo_nen, i) => (
+                        <td key={i} className='vt daiun-col'>
+                            <Element
+                                name={ryo_nen.kan.element}
+                                tsuhen={ryo_nen.kan.tsuhen}
+                            />
+                            <Element
+                                name={ryo_nen.shi.element}
+                                tsuhen={ryo_nen.shi.tsuhen}
+                            />
+                        </td>  // Display data from the response
                     ))
                 ) : (
                     // If no response, generate cells with indices
