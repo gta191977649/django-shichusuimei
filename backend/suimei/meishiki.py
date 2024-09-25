@@ -342,13 +342,10 @@ class Meishi:
         year_list = []
         for i in range(unjun_step):
             daiun_time = i * 10
-
-            print("大運",daiun_time)
             yearlist = []
             for j in range(daiun_time,daiun_time+unjun_step-1):
                 if year + j < 2100:
                     y = cnlunar.Lunar(datetime.datetime(year + j,3,1,1,1), godType='8char')
-                    print(y.year8Char,year + j)
                     kan_idx = Meishi.kan.index(y.year8Char[0])
                     kan_idx_tsuhen_idx = Meishi.kan_tsuhen[higen_idx].index(kan_idx)
                     # 蔵干
