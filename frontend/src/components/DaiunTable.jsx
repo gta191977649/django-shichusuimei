@@ -222,7 +222,37 @@ export default function DaiunTable({width,response,step}) {
             </tr>
             
         </table>
-
+        
+        <br/>
+        <table style={{width:width}}>
+            <tr>
+                <th style={{width:100}}>鑑定分野</th>
+                <td  colSpan={11}>
+                    <select className='table-input' name="gender" id="gender">
+                        <option value={0}>恋愛･結婚運</option>
+                        <option value={1}>仕事･金･運</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <th colSpan={12}>流年</th>
+            </tr>
+            <tr>
+                <th>年</th>
+                {response ? (
+                    // Assuming 'response' has an array 'years' that you want to map over
+                    response.year_table.map((year, i) => (
+                        <td key={i}>{year}</td>  // Display data from the response
+                    ))
+                ) : (
+                    // If no response, generate cells with indices
+                    Array.from({ length: step-1 }, (_, i) => (
+                        <td key={i}>{i}</td>
+                    ))
+                )}
+            </tr>
+        </table>
+ 
         </>
     )
 }

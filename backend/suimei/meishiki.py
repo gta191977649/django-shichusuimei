@@ -340,6 +340,7 @@ class Meishi:
         year = (self.birthdate.year + year) + 1 if month > 4 else (self.birthdate.year + year)
         # 年間推算（立運時始まる）
         year_list = []
+
         for i in range(unjun_step):
             daiun_time = i * 10
 
