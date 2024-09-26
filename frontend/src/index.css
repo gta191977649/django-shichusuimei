@@ -1,6 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@400;500;700&display=swap');
 
-* {
+.kaisei-opti-regular {
+  font-family: "Kaisei Opti", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.kaisei-opti-medium {
+  font-family: "Kaisei Opti", serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.kaisei-opti-bold {
+  font-family: "Kaisei Opti", serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+body {
   font-synthesis: none;
   font-family: "Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
   font-style: normal;
@@ -128,6 +147,7 @@ rb, rt {
 .text-element {
   padding: 5px;
   font-size: 20px;
+  font-family: "Kaisei Opti";
 }
 
 .daiun-col li {
