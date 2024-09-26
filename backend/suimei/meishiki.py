@@ -181,7 +181,10 @@ class Meishi:
         ["戌", "辰"],
         ["亥", "巳"],
     ]
-
+    def get_kan_element_type(self,kan):
+        kan_idx = Meishi.kan.index(kan)
+        gogyo_idx = Meishi.gogyo_kan[kan_idx]
+        return Meishi.gogyo[gogyo_idx]
     def check_chichu(self, shi_1, shi_2):
         # Create a set of the input 地支
         shi_pair = {shi_1, shi_2}
@@ -386,6 +389,39 @@ class Meishi:
             })
         #print(year_list)
         return year_list
+    # 用神分析
+    def younjinAnlysis(self):
+        output = {
+            "younjin": {
+                "element":[],
+                "tsuhen":[]
+            },
+            "kishin": { # 忌神
+                "element": [],
+                "tsuhen": []
+            },
+        }
+        # 日主の旺衰（強弱）を判断
+        shin_point = self.tsukirei_point + self.gogyu_point + self.juniun_point
+        element_type = self.get_kan_element_type(self.higen)
+        if shin_point > 3: # （旺）
+            # 用神：日主を抑える五行（克する、泄する）。
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["泄星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["官星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["財星"])
+            # 忌神：日主をさらに強める五行（生じる、扶ける）。
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["印星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["自星"])
+        else: # （弱）
+            # 用神：日主を助ける五行（生じる、扶ける）。
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["自星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["印星"])
+            # 忌神：日主をさらに弱める五行（克する、泄する）。
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["泄星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["官星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["財星"])
+        return output
+
     # 立運計算
     def getRitsunTime(self):
         output_steps = ""
@@ -648,6 +684,8 @@ class Meishi:
         # 大運時間推算
         self.daiunList = self.getDaiunList(unjun_type)
         self.yearList = self.getYearList()
+
+        self.younjin = self.younjinAnlysis()
         print("OK")
 
 if __name__ == '__main__':

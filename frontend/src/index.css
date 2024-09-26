@@ -1,9 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap');
 
-body {
+* {
+  font-synthesis: none;
   font-family: "Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
   font-style: normal;
+  -webkit-font-smoothing: antialiased;
 }
+
 
 table, th, td {
   border-collapse: collapse;

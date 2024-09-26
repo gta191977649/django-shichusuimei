@@ -3,6 +3,7 @@ import api from "../api";
 import Element from '../components/Element';
 import ShinTypeChart from '../components/ShinTypeChart';
 import DaiunTable from '../components/DaiunTable'
+import YoujinTable from '../components/YoujinTable'
 
 export default function Home() {
   const tableWidth = "380px"
@@ -134,6 +135,7 @@ export default function Home() {
 
         </tr>
       </table>
+
       <br/>
        {/* 命式 */}
        <table style={{width:tableWidth}}>
@@ -176,6 +178,8 @@ export default function Home() {
           </td>
         </tr>
       </table>
+      <br/>
+      <YoujinTable response={response} width={tableWidth} titleColWidth={titleColWidth}/>
       <br/>
       {/* 大運表 */}
       <DaiunTable width={tableWidth} response={response} step={daiun_step}/>
