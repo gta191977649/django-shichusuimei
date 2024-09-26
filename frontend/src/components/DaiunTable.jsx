@@ -5,6 +5,7 @@ import Element from '../components/Element';
 export default function DaiunTable({width,response,step}) {
     const [ritsnun_age,setRitsunAge] = useState(0)
     const [daiun_idx,setDaiun] = useState(0)
+    const [event_type,setEventType] = useState(0)
     useEffect(()=>{
         if (response && response.ritsun_time) {  // Check if response and response.ritsun_time are defined
             let age = ritsuun_age_calculate(response.ritsun_time.year, response.ritsun_time.month);
@@ -232,8 +233,8 @@ export default function DaiunTable({width,response,step}) {
                 <th>鑑定分野</th>
                 <td colSpan={11}>
                     <select className='table-input' name="gender" id="gender">
-                        <option value={0}>恋愛･結婚運</option>
-                        <option value={1}>仕事･金･運</option>
+                        <option value="relationship">恋愛･結婚運</option>
+                        <option value="work">仕事･金･運</option>
                     </select>
                 </td>
             </tr>
@@ -281,6 +282,21 @@ export default function DaiunTable({width,response,step}) {
                     ))
                 )}
             </tr>
+            <tr>
+                <th>イベント</th>
+                {response ? (
+                    response.daiun_table.year_table[daiun_idx].list.map((ryo_nen, i) => (
+                        <td key={i} className='vt daiun-col'>
+                            {ryo_nen.event.relationship.map((event, eventIndex) => (
+                                <div key={eventIndex}>･ {event.name}</div>
+                            ))}
+                        </td>
+                    ))
+                ) : (
+                    <td>No Events</td>  // Display a default message or cell when there is no response
+                )}
+            </tr>
+
         </table>
  
         </>

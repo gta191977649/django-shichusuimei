@@ -217,6 +217,58 @@ class Meishi:
         setsu_terms = ["立春", "惊蛰", "清明", "立夏", "芒种", "小暑", "立秋", "白露", "寒露", "立冬", "大雪", "小寒"]
         dates = {term: date for term, date in self.date.thisYearSolarTermsDic.items() if term in setsu_terms}
         return dates
+    # イベン計算(流年)
+    def getEvent(self,kan,shi,type="relationship"):
+        event_list = []
+        relastioship_element = self.chishi[2]
+        if type == "relationship":
+            # 男命遇财星，女命遇官杀
+            kan_tsuhen = kan["tsuhen"]
+            shi_tsuhen = shi["tsuhen"]
+            if self.gender == 1:
+                # 财星情况
+                if kan_tsuhen == "偏財" or kan_tsuhen == "正財":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{kan_tsuhen}」" ,
+                        "description": ""
+                    })
+                if shi_tsuhen == "偏財" or shi_tsuhen == "正財":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{shi_tsuhen}」",
+                        "description": ""
+                    })
+                # 夫妻宫引动情况 (自刑(同)，合，冲，刑)
+                # 干合
+                if self.check_kangou(self.higen, kan["element"]):
+                    event_list.append({
+                        "name": "恋愛機会可能「干合」",
+                        "description": ""
+                    }) # 支合
+                if self.check_shigou(relastioship_element, shi["element"]):
+                    event_list.append({
+                        "name": "恋愛機会可能「支合」",
+                        "description": ""
+                    })
+                # 自刑
+                if relastioship_element == shi["element"]:
+                    event_list.append({
+                        "name": "感情紛争注意「自刑」",
+                        "description": ""
+                    })
+                # 支沖
+                if self.check_chichu(relastioship_element, shi["element"]):
+                    event_list.append({
+                        "name": "感情変化注意「支沖」",
+                        "description": ""
+                    })
+            if self.gender == 0:
+                if kan_tsuhen == "正官" or kan_tsuhen == "偏官":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{kan_tsuhen}」",
+                        "description": ""
+                    })
+        return event_list
+
     # 大運計算
     def getDaiunList(self, unjun_type, unjun_step=11):
         # 1. 月柱の干支を取得
@@ -365,19 +417,26 @@ class Meishi:
                             })
                         else:
                             zoukan_junshi.append("")
+                    kan = {
+                        "element":y.year8Char[0],
+                        "tsuhen":Meishi.tsuhen[kan_idx_tsuhen_idx],
+                    }
+                    shi = {
+                        "element":y.year8Char[1],
+                        "tsuhen":zoukan_junshi[-1]["tsuhen"],
+                        "zoukan":zoukan_junshi,
+                        "seiun": self.getJuniunboshi(self.higen, y.year8Char[1]),
+                    }
                     yearlist.append({
                         "age": (j+1),
                         "year": year + j,
-                        "kan": {
-                            "element":y.year8Char[0],
-                            "tsuhen":Meishi.tsuhen[kan_idx_tsuhen_idx],
+                        "event": {
+                            "relationship": self.getEvent(kan,shi,type="relationship"),
+                            "work":[],
+                            "health":[],
                         },
-                        "shi": {
-                            "element":y.year8Char[1],
-                            "tsuhen":zoukan_junshi[-1]["tsuhen"],
-                            "zoukan":zoukan_junshi,
-                            "seiun": self.getJuniunboshi(self.higen, y.year8Char[1]),
-                        }
+                        "kan":kan,
+                        "shi":shi
 
                     })
                 else: break
