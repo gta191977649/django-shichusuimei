@@ -7,7 +7,7 @@ export default function Element(props) {
       "forestgreen": ["甲", "乙", "寅", "卯"],
       "red": ["丙", "丁", "巳", "午"],
       "saddlebrown": ["戌","戊", "己", "未","丑","辰"],
-      "orange": ["庚", "辛", "申", "酉"],
+      "darkorange": ["庚", "辛", "申", "酉"],
       "royalblue": ["壬", "癸", "亥", "子"],
     };
     // Loop through each color in the table and check if the element belongs to that color
