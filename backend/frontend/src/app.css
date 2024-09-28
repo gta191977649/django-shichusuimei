@@ -1,0 +1,21 @@
+.app h1, h2{
+    font-family: "Kaisei Opti";
+    font-weight: bold;
+}
+
+.text-main {
+    font-family: "Kaisei Opti";
+    font-weight: bold;
+    color: rgb(146 64 14);
+}
+.col-month {
+    height: 150px;
+    writing-mode: vertical-rl;
+    /* border: thick double black; */
+}
+
+.app .masukoto {
+    position: absolute;
+    top:0;
+    z-index: 1;
+}
