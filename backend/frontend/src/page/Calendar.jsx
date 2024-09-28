@@ -89,31 +89,33 @@ const FortuneCalendar = () => {
         const firstDayOfMonth = new Date(selectedYear, month, 1).getDay()
 
         return (
-            <div className="w-full px-4">
-                <div className="grid grid-cols-7 gap-1 mb-2">
-                    {weekdays.map((day) => (
-                        <div key={day} className="text-center font-medium text-amber-800">
-                            {day}
-                        </div>
-                    ))}
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                    {Array.from({ length: firstDayOfMonth }).map((_, index) => (
-                        <div key={`empty-${index}`} className="h-16"></div>
-                    ))}
-                    {Array.from({ length: daysInMonth }).map((_, index) => {
-                        const fortune = getRandomFortune()
-                        return (
-                            <div
-                                key={index}
-                                className="flex flex-col items-center justify-between hover:bg-amber-100"
-                            >
-                                <span className="text-sm font-medium text-gray-600">{index + 1}</span>
-                                <span className="text-lg">{fortune.icon}</span>
-                                <span className={`text-xs ${fortune.color}`}>{fortune.description}</span>
+            <div className='note'>
+                <div className="w-full px-4 pt-4">
+                    <div className="grid grid-cols-7 gap-1 mb-2">
+                        {weekdays.map((day) => (
+                            <div key={day} className="text-center font-medium text-amber-800">
+                                {day}
                             </div>
-                        )
-                    })}
+                        ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: firstDayOfMonth }).map((_, index) => (
+                            <div key={`empty-${index}`} className="h-16"></div>
+                        ))}
+                        {Array.from({ length: daysInMonth }).map((_, index) => {
+                            const fortune = getRandomFortune()
+                            return (
+                                <div
+                                    key={index}
+                                    className="flex flex-col items-center justify-between hover:bg-amber-100"
+                                >
+                                    <span className="text-sm font-medium text-gray-600">{index + 1}</span>
+                                    <span className="text-lg">{fortune.icon}</span>
+                                    <span className={`text-xs ${fortune.color}`}>{fortune.description}</span>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </div>
             </div>
         )
@@ -165,7 +167,7 @@ const FortuneCalendar = () => {
                 </Button>
             </div>
 
-            <ScrollArea className="h-[calc(100vh-150px)]">
+            <ScrollArea >
                 {renderMonthGroup(0)}
                 {renderMonthGroup(4)}
                 {renderMonthGroup(8)}
