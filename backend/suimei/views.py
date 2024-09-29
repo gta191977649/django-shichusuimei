@@ -52,6 +52,7 @@ class SuimeiView(APIView):
             "shi_type_note":meishi.shin_type_note,
             "ritsun_time": meishi.ritsun,
             "younjin": meishi.younjin,
+            "kakyoku": meishi.kakyoku,
             "daiun_table": {
                 "daiun": meishi.daiunList,
                 "year_table":meishi.yearList,

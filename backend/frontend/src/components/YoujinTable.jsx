@@ -5,7 +5,7 @@ export default function YoujinTable({response,width,titleColWidth}) {
     <table style={{width:width}}>
         <tr>
             <th>格局鑑定</th>
-            <td style={{width:titleColWidth}}>-</td>
+            <td style={{width:titleColWidth}}>{response ? response.kakyoku.pattern : "-"}</td>
         </tr>
         <tr>
             <th>抽出方法</th>

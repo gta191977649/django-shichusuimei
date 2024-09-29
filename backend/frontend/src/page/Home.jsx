@@ -4,7 +4,7 @@ import './../app.css'
 
 export default function Home() {
   return (
-    <div className='container'>
+    <div className='debug-container'>
       <div class="row">
         {/* LEFT COLUM */}
         <div class="col-2">

@@ -448,6 +448,52 @@ class Meishi:
             })
         #print(year_list)
         return year_list
+    # 格局分析
+    def kakyokuAnlysis(self):
+        output = {
+            "pattern":"",
+            "note":""
+        }
+        # 一般の方（比肩、劫財除外)
+        yueling = self.meisiki["shi"][1]["element"]
+        yueling_tsuhen = self.meisiki["shi"][1]["tsuhen"]
+
+        # 1. 月柱の支に蔵干（本気）で透出（月地支透于天干）
+        if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
+            output["pattern"] = "{}格".format(self.meisiki["shi"][1]["tsuhen"])
+            output["note"] = "月柱の支に蔵干（本気）で透出（月地支透于天干）"
+            return output
+        # 2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）
+        for i in range(1,len(self.meisiki["shi"][1]["zoukan"])):
+            if self.meisiki["shi"][1]["zoukan"][i]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
+                output["pattern"] = "{}格".format(self.meisiki["shi"][1]["zoukan"][i]["tsuhen"])
+                output["note"] = "2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）"
+                return output
+
+        # 3. 月柱未透月天干、でも月柱以外の柱て透出の方
+        for j in range(len(self.meisiki["kan"])):
+            if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][j]["tsuhen"]:
+                output["pattern"] = "{}格".format(yueling_tsuhen)
+                output["note"] = "3. 月柱未透月天干、でも月柱以外の柱て透出。"
+                return output
+
+        # 4. 月柱蔵干全て未透（月柱と他の支未透）、月柱の蔵干全てと全体的柱に探す、そしてルール３で适用。
+        for i in range( len(self.meisiki["shi"][1]["zoukan"])):
+            yueling_tsuhen = self.meisiki["shi"][1]["zoukan"][i]["tsuhen"]
+            for j in range(len(self.meisiki["kan"])):
+                if yueling_tsuhen == self.meisiki["kan"][j]["tsuhen"]:
+                    output["pattern"] = "{}格".format(yueling_tsuhen)
+                    output["note"] = "3. 月柱蔵干全て未透（月柱と他の支未透）、月柱の蔵干全てと全体的柱に探す、そしてルール３で适用。"
+                    return output
+
+        # 5. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷
+
+        # 6. さもないと、月令の通変星直接に取って（比肩、劫財除外）
+        output["pattern"] = "{}格".format(yueling_tsuhen)
+        output["note"] = "6. さもないと、月令の通変星直接に取って（比肩、劫財除外）"
+
+
+        return output
     # 用神分析
     def younjinAnlysis(self):
         output = {
@@ -673,7 +719,12 @@ class Meishi:
         return shin_type, tsukirei_point, gogyu_point, juniun_point, note
 
 
-
+    def getKanTsuhen(self,kan):
+        higen_idx = Meishi.kan.index(self.higen)
+        zoukan_idx = Meishi.kan.index(kan)
+        junshi = Meishi.kan_tsuhen[higen_idx].index(zoukan_idx)
+        junshi = Meishi.tsuhen[junshi]
+        return junshi
     def __init__(self,birthdate,gender=1):
         self.birthdate = birthdate
         self.date = cnlunar.Lunar(self.birthdate, godType='8char')
@@ -712,11 +763,6 @@ class Meishi:
                     a.append(junshi)
                 else:
                     a.append("空")
-                #print(zoukan_element,junshi)
-                #     zoukan_honki = element[i]
-                #     zoukan_idx = Meishi.kan.index(zoukan_honki)
-                #     junshi = Meishi.kan_tsuhen[higen_idx].index(zoukan_idx)
-                #     print(zoukan_honki)
             self.junshi.append(a)
         # 十二運星に求めて
         self.juniunshi = []
@@ -731,6 +777,37 @@ class Meishi:
         # 空亡
         self.kubou = self.getKuBou(self.higen,self.chishi[2])
 
+        self.meisiki = {
+            "kan":[],
+            "shi":[],
+            "kubou":self.kubou,
+        }
+        # Merge Tenkan
+        for idx,k in enumerate(self.tenkan):
+            self.meisiki["kan"].append({
+                "element":k,
+                "tsuhen":self.junshi[0][idx],
+            })
+        # Merge Chishi
+        for idx, c in enumerate(self.chishi):
+            zoukan_elements = []
+            for jdx, z in enumerate(reversed(self.zoukan[idx])):
+                if z:
+                    zoukan_elements.append({
+                        "element":z,
+                        "tsuhen":self.getKanTsuhen(z),
+                    })
+                else:
+                    zoukan_elements.append({
+                        "element": False,
+                        "tsuhen": False,
+                    })
+            self.meisiki["shi"].append({
+                "element": c,
+                "tsuhen": zoukan_elements[0]["tsuhen"],
+                "zoukan":zoukan_elements
+            })
+
         # 立運時間推算
         y, m, unjun_type,ritsuun_note = self.getRitsunTime()
         self.ritsun = {
@@ -743,9 +820,12 @@ class Meishi:
         # 大運時間推算
         self.daiunList = self.getDaiunList(unjun_type)
         self.yearList = self.getYearList()
-
+        # 用神
         self.younjin = self.younjinAnlysis()
+        # 格局 (かっきょく)
+        self.kakyoku = self.kakyokuAnlysis()
         print("OK")
+
 
 if __name__ == '__main__':
     date = datetime.datetime(1997, 2, 7, 9, 25)

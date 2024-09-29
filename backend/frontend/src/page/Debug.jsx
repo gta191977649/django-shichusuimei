@@ -43,7 +43,7 @@ export default function Debug() {
 
   
   return (
-    <>
+    <div className='debug-container'>
       <div>
         NURUPOの四柱推命分析 (専門家用DEBUG PAGE)
         <br/>三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る。
@@ -183,6 +183,6 @@ export default function Debug() {
       <br/>
       {/* 大運表 */}
       <DaiunTable width={tableWidth} response={response} step={daiun_step}/>
-    </>
+    </div>
   )
 }
