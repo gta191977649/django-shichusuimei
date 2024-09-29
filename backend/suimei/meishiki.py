@@ -473,9 +473,6 @@ class Meishi:
             "pattern":"N/A",
             "note":""
         }
-
-
-        yueling = self.meisiki["shi"][1]["element"]
         yueling_tsuhen = self.meisiki["shi"][1]["tsuhen"]
         print(yueling_tsuhen)
         # 特別格判断
