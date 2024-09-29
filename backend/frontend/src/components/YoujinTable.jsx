@@ -51,6 +51,15 @@ export default function YoujinTable({response,width,titleColWidth}) {
             <th>通関用神</th>
             <td style={{width:titleColWidth}}>-</td>
         </tr>
+        <tr>
+          <th>注記</th>
+          <td style={{width:titleColWidth,textAlign:'center'}} className='display-linebreak'>
+            <details>
+              <summary>展開</summary>
+              {response ? response.kakyoku.note : "-"}
+            </details>
+          </td>
+        </tr>
     </table>
   )
 }

@@ -457,7 +457,7 @@ class Meishi:
         # 一般の方（比肩、劫財除外)
         yueling = self.meisiki["shi"][1]["element"]
         yueling_tsuhen = self.meisiki["shi"][1]["tsuhen"]
-
+        print(yueling_tsuhen)
         # 1. 月柱の支に蔵干（本気）で透出（月地支透于天干）
         if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
             output["pattern"] = "{}格".format(self.meisiki["shi"][1]["tsuhen"])
@@ -487,9 +487,9 @@ class Meishi:
                     return output
 
         # 5. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷
-            
+
         # 6. さもないと、月令の通変星直接に取って（比肩、劫財除外）
-        output["pattern"] = "{}格".format(yueling_tsuhen)
+        output["pattern"] = "{}格".format(self.meisiki["shi"][1]["tsuhen"])
         output["note"] = "6. さもないと、月令の通変星直接に取って（比肩、劫財除外）"
 
 
