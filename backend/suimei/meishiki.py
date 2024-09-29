@@ -468,57 +468,63 @@ class Meishi:
         #print(year_list)
         return year_list
     # 格局分析
-    def kakyokuAnlysis(self):
+    def kakyokuAnalysis(self):
         output = {
-            "pattern":"N/A",
-            "note":""
+            "pattern": "N/A",
+            "note": "格局分析ステップ:\n"
         }
         yueling_tsuhen = self.meisiki["shi"][1]["tsuhen"]
-        print(yueling_tsuhen)
+        output["note"] += f"1. 月令通変星: {yueling_tsuhen}\n"
+
         # 特別格判断
-        if yueling_tsuhen == "劫財" or yueling_tsuhen == "比肩":
-            output["pattern"] = "特別格局（比肩、劫財あり）".format(self.meisiki["shi"][1]["tsuhen"])
-            output["note"] = "特別格局（比肩、劫財あり）"
+        if yueling_tsuhen in ["劫財", "比肩"]:
+            output["pattern"] = f"特別格局（{yueling_tsuhen}あり）"
+            output["note"] += f"2. 特別格局: 月令が{yueling_tsuhen}のため、特別格局と判断\n"
             return output
 
         # 一般の方（比肩、劫財除外)
-        # 1. 月柱の支に蔵干（本気）で透出（月地支透于天干）
+        output["note"] += "一般格局の分析開始（比肩、劫財を除く）:\n"
+
+        # 1. 月柱の支に蔵干（本気）で透出
         if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
-            output["pattern"] = "{}格".format(self.meisiki["shi"][1]["tsuhen"])
-            output["note"] = "月柱の支に蔵干（本気）で透出（月地支透于天干）"
+            output["pattern"] = f"{self.meisiki['shi'][1]['tsuhen']}格"
+            output["note"] += "1. 月柱の支に蔵干（本気）で透出（月地支透于天干）\n"
             return output
-        # 2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）
-        for i in range(1,len(self.meisiki["shi"][1]["zoukan"])):
+
+        # 2. 月柱の支に蔵干（本気以外の気）で透出
+        for i in range(1, len(self.meisiki["shi"][1]["zoukan"])):
             if self.meisiki["shi"][1]["zoukan"][i]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
-                output["pattern"] = "{}格".format(self.meisiki["shi"][1]["zoukan"][i]["tsuhen"])
-                output["note"] = "2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）"
+                output["pattern"] = f"{self.meisiki['shi'][1]['zoukan'][i]['tsuhen']}格"
+                output["note"] += "2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）\n"
                 return output
 
-        # 3. 月柱未透月天干、でも月柱以外の柱て透出の方 （見方１のみ）
+        # 3. 月柱未透月天干、でも月柱以外の柱で透出
         found = []
         for j in range(len(self.meisiki["kan"])):
             if j == 2: continue  # 日元SKIP
             if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][j]["tsuhen"]:
-                found.append("{}格".format(yueling_tsuhen))
-        if len(found) == 1: #（見方１のみ）
+                if not f"{yueling_tsuhen}格" in found: found.append(f"{yueling_tsuhen}格")
+        if len(found) == 1:
             output["pattern"] = found[0]
-            output["note"] = "3. 月柱未透月天干、でも月柱以外の柱て透出。"
+            output["note"] += "3. 月柱未透月天干、でも月柱以外の柱で透出\n"
             return output
 
-        # 4. 月柱蔵干全て未透（月柱と他の支未透）、月柱の蔵干全てと全体的柱に探す、そしてルール３で适用。
+        # 4. 月柱蔵干全て未透、月柱の蔵干全てと全体的柱に探す
         found = []
-        for i in range( len(self.meisiki["shi"][1]["zoukan"])):
-            yueling_tsuhen = self.meisiki["shi"][1]["zoukan"][i]["tsuhen"]
-            for j in range(len(self.meisiki["kan"])):
-                if j == 2: continue # 日元SKIP
-                if yueling_tsuhen == self.meisiki["kan"][j]["tsuhen"]:
-                    found.append("{}格".format(yueling_tsuhen))
-        if len(found) == 1: #（見方１のみ）
+        for shi in self.meisiki["shi"]:
+            for i in range(len(shi["zoukan"])):
+                if shi["zoukan"][i]["tsuhen"]:
+                    yueling_tsuhen = shi["zoukan"][i]["tsuhen"]
+                    for j in range(len(self.meisiki["kan"])):
+                        if j == 2: continue  # 日元SKIP
+                        if yueling_tsuhen == self.meisiki["kan"][j]["tsuhen"]:
+                            if not f"{yueling_tsuhen}格" in found: found.append(f"{yueling_tsuhen}格")
+        if len(found) == 1:
             output["pattern"] = found[0]
-            output["note"] = "4. 月柱蔵干全て未透（月柱と他の支未透）、月柱の蔵干全てと全体的柱に探す、そしてルール３で适用。"
+            output["note"] += "4. 月柱蔵干全て未透、月柱の蔵干全てと全体的柱で探索\n"
             return output
 
-        # 5. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷
+        # 5. 全体天干と全体地支未透の方（六神通変星）使用
         found = []
         for i in range(len(self.meisiki["shi"][1]["zoukan"])):
             tsuhen = self.meisiki["shi"][1]["zoukan"][i]["tsuhen"]
@@ -527,17 +533,15 @@ class Meishi:
                 a = self.check_six_ka(tsuhen)
                 b = self.check_six_ka(self.meisiki["kan"][j]["tsuhen"])
                 if a == b:
-                    found.append("虚透{}格".format(tsuhen))
-
-        if len(found) == 1: #（見方１のみ）
+                    if not f"虚透{tsuhen}格" in found: found.append(f"虚透{tsuhen}格")
+        if len(found) == 1:
             output["pattern"] = found[0]
-            output["note"] = "5. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷"
+            output["note"] += "  e. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷\n"
             return output
 
-
-        # 6. さもないと、月令の通変星直接に取って（比肩、劫財除外）
-        output["pattern"] = "{}格".format(self.meisiki["shi"][1]["tsuhen"])
-        output["note"] = "6. さもないと、月令の通変星直接に取って（比肩、劫財除外）"
+        # 6. さもないと、月令の通変星直接に取って
+        output["pattern"] = f"{self.meisiki['shi'][1]['tsuhen']}格"
+        output["note"] += "  f. 上記すべて該当しないため、月令の通変星を直接採用（比肩、劫財除外）\n"
 
         return output
     # 用神分析
@@ -869,7 +873,7 @@ class Meishi:
         # 用神
         self.younjin = self.younjinAnlysis()
         # 格局 (かっきょく)
-        self.kakyoku = self.kakyokuAnlysis()
+        self.kakyoku = self.kakyokuAnalysis()
         print("OK")
 
 
