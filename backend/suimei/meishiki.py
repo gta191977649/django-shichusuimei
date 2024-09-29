@@ -519,8 +519,8 @@ class Meishi:
                         if j == 2: continue  # 日元SKIP
                         if yueling_tsuhen == self.meisiki["kan"][j]["tsuhen"]:
                             if not f"{yueling_tsuhen}格" in found: found.append(f"{yueling_tsuhen}格")
-        if len(found) == 1:
-            output["pattern"] = found[0]
+        if len(found) > 0:
+            output["pattern"] = found
             output["note"] += "4. 月柱蔵干全て未透、月柱の蔵干全てと全体的柱で探索\n"
             return output
 
