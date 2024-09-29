@@ -487,7 +487,7 @@ class Meishi:
                     return output
 
         # 5. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷
-
+            
         # 6. さもないと、月令の通変星直接に取って（比肩、劫財除外）
         output["pattern"] = "{}格".format(yueling_tsuhen)
         output["note"] = "6. さもないと、月令の通変星直接に取って（比肩、劫財除外）"
