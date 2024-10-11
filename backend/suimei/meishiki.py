@@ -16,7 +16,7 @@ class Meishi:
     # 十神
     tsuhen = ['比肩', '劫財', '食神', '傷官', '偏財', '正財', '偏官', '正官', '偏印', '印綬', ]
     # 五行 ㊎㊍㊌㊋㊏
-    gogyo = ['木', '火', '土', '金', '水', ]
+    gogyo = ['木', '火', '土', '金', '水' ]
     # 五行生剋関係
     gogyo_seikei = {
         "木": {
@@ -124,6 +124,70 @@ class Meishi:
         [3, 2, 1, 1, 1, 0, 0, 0, 1, 1, 1, 3],  # 癸
 
     ]
+    # 五行月令係数表 (https://www.zhycw.com/art/n21c5.aspx)
+    TsukireiKeisuHeader = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子","丑"]
+    TsukireiKeisuRow = ["木", "火", "土", "金", "水"]
+    TsukireiKeisuMatrix = [
+        [1.571, 2.000, 1.166, 0.862, 0.912, 0.924, 0.795, 0.500, 0.674, 1.590, 1.414, 0.898],  # 木
+        [1.548, 1.414, 1.074, 1.571, 1.700, 1.341, 0.674, 0.707, 1.012, 0.774, 0.500, 0.821],  # 火
+        [0.924, 0.500, 1.421, 1.548, 1.590, 1.674, 1.012, 1.000, 1.641, 0.645, 0.707, 1.512],  # 土
+        [0.716, 0.707, 1.161, 0.924, 0.774, 1.069, 1.641, 2.000, 1.498, 0.912, 1.000, 1.348],  # 金
+        [0.862, 1.000, 0.800, 0.716, 0.645, 0.612, 1.498, 1.414, 0.795, 1.700, 2.000, 1.041]  # 水
+    ]
+    ZoukanPointTable = {
+        "子": {
+            "癸": 100,
+        },
+        "丑": {
+            "己": 60,
+            "癸": 30,
+            "辛": 10,
+        },
+        "寅": {
+            "甲": 60,
+            "丙": 30,
+            "戊": 10,
+        },
+        "卯": {
+            "乙": 100,
+        },
+        "辰": {
+            "戊": 60,
+            "乙": 30,
+            "癸": 10,
+        },
+        "巳": {
+            "丙": 60,
+            "戊": 30,
+            "庚": 10,
+        },
+        "午": {
+            "丁": 70,
+            "己": 30,
+        },
+        "未": {
+            "己": 60,
+            "丁": 30,
+            "乙": 10,
+        },
+        "申": {
+            "庚": 60,
+            "壬": 30,
+            "戊": 10,
+        },
+        "酉": {
+            "辛": 100,
+        },
+        "戌": {
+            "戊": 60,
+            "辛": 30,
+            "丁": 10,
+        },
+        "亥": {
+            "壬": 70,
+            "甲": 30,
+        },
+    }
     # 十二運エネルギー表
     JuniunTable = ["長生", "沐浴", "冠帯", "建禄", "帝旺", "衰", "病", "死", "墓", "絶", "胎", "養"]
     # 十二運星点表 (参造三木照山 p.100)
@@ -288,6 +352,51 @@ class Meishi:
                     })
         return event_list
 
+    def getElementsEnergyMonthConstant(self,month, element):
+        if month not in Meishi.TsukireiKeisuHeader:
+            raise ValueError(f"Invalid month: {month}. Must be one of {Meishi.TsukireiKeisuHeader}")
+        if element not in Meishi.TsukireiKeisuRow:
+            raise ValueError(f"Invalid element: {element}. Must be one of {Meishi.TsukireiKeisuRow}")
+
+        month_index = Meishi.TsukireiKeisuHeader.index(month)
+        element_index = Meishi.TsukireiKeisuRow.index(element)
+
+        return Meishi.TsukireiKeisuMatrix[element_index][month_index]
+
+    # 五行エネルギー計算
+    def computeFiveElementEnergy(self):
+        energy = {
+            "木":0,
+            "火":0,
+            "土":0,
+            "金":0,
+            "水":0,
+        }
+        # 月令
+        tsukiren = self.meisiki["shi"][1]["element"]
+        #tsukirenKeisei = self.getElementsEnergyMonthConstant(tsukiren,"木")
+        # 天干計算
+        for kan in self.meisiki["kan"]:
+            element = kan["element"]
+            element_type = self.get_kan_element_type(element)
+            energy[element_type] += 100 #天干は１００点
+
+        # 地支計算
+        for shi in self.meisiki["shi"]:
+            element = shi["element"]
+            for zoukan in Meishi.ZoukanPointTable[element]:
+                zoukan_name = zoukan
+                zoukan_type = self.get_kan_element_type(zoukan_name)
+                zoukan_strength = Meishi.ZoukanPointTable[element][zoukan]
+                energy[zoukan_type] += zoukan_strength
+                print(zoukan_name,zoukan_type,zoukan_strength)
+
+        # 月令係数計算
+        for element in energy:
+            energy[element] *= self.getElementsEnergyMonthConstant(tsukiren,element)
+
+        print(energy,tsukiren+"月生")
+        return energy
     # 大運計算
     def getDaiunList(self, unjun_type, unjun_step=11):
         # 1. 月柱の干支を取得
@@ -650,8 +759,6 @@ class Meishi:
         output_steps += f"9. 最終結果: {years}年{months}ヶ月\n"
 
         return years, months,unjun_type, output_steps
-
-
     def getKuBou(self,kan,shi):
         kanshi = kan+shi
         for kubou in Meishi.KuBouTable:
@@ -876,13 +983,14 @@ class Meishi:
         self.kakyoku = self.kakyokuAnalysis()
         print("OK")
 
+        self.computeFiveElementEnergy()
+
 
 if __name__ == '__main__':
-    date = datetime.datetime(1997, 2, 7, 9, 25)
+    date = datetime.datetime(1997, 2, 14, 2, 58)
 
     meishi = Meishi(date)
     kankou = meishi.check_kangou("己","甲")
-    print(kankou)
     #y,m,debug = meishi.getRitsunTime()
 
     # print(y,m)
