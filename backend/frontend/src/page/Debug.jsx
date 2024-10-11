@@ -4,7 +4,8 @@ import Element from '../components/Element';
 import ShinTypeChart from '../components/ShinTypeChart';
 import DaiunTable from '../components/DaiunTable'
 import YoujinTable from '../components/YoujinTable'
-
+import ProgressBar from 'react-bootstrap/ProgressBar';
+import CustomProgressBar from '../components/CustomProgressBar';
 export default function Debug() {
   const tableWidth = "380px"
   const titleColWidth = "280px"
@@ -12,10 +13,14 @@ export default function Debug() {
   const [date,setDate] = useState()
   const [time,setTime] = useState()
   const [gender,setGender] = useState(1)
-
   const [response,setResponse] = useState()
 
-
+  const getFiveElementEnergy = (response,element_type) => {
+    if(!response) return 0
+    const total = Object.values(response.element_energy).reduce((sum, val) => sum + val, 0)
+    console.log(response.element_energy[element_type] / total)
+    return response.element_energy[element_type] / total
+  }
   const handleSubmit = () => {
     if (date && time && gender) {
       console.log(date,time,gender)
@@ -135,7 +140,38 @@ export default function Debug() {
 
         </tr>
       </table>
-
+      <table style={{width:tableWidth}}>
+        <tr>
+          <th>木</th>
+          <td style={{width:titleColWidth}}>
+            {response ? <CustomProgressBar color="forestgreen" min={0} max={1} value={getFiveElementEnergy(response,"木")} /> : "-"}
+          </td>
+        </tr>
+        <tr>
+          <th>火</th>
+          <td style={{width:titleColWidth}}>
+            {response ? <CustomProgressBar min={0} max={1} color="red" value={getFiveElementEnergy(response,"火")} /> : "-"}
+          </td>
+        </tr>
+        <tr>
+          <th>土</th>
+          <td style={{width:titleColWidth}}>
+            {response ? <CustomProgressBar min={0} max={1} color="saddlebrown" value={getFiveElementEnergy(response,"土")} /> : "-"}
+          </td>
+        </tr>
+        <tr>
+          <th>金</th>
+          <td style={{width:titleColWidth}}>
+            {response ? <CustomProgressBar min={0} max={1} color="darkorange" value={getFiveElementEnergy(response,"金")} /> : "-"}
+          </td>
+        </tr>
+        <tr>
+          <th>水</th>
+          <td style={{width:titleColWidth}}>
+            {response ? <CustomProgressBar min={0} max={1} color="royalblue" value={getFiveElementEnergy(response,"水")} /> : "-"}
+          </td>
+        </tr>
+      </table>
       <br/>
        {/* 命式 */}
        <table style={{width:tableWidth}}>

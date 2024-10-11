@@ -35,6 +35,7 @@ table, th, td {
   border: 1px solid;
   text-align: center;
   padding: 0px;
+  margin: 0px;
 }
 
 th {
@@ -162,5 +163,12 @@ rb, rt {
 
 .debug-container {
   padding: 15px;
+}
+
+.bar-input {
+  border-radius: 0px; /* Rounded corners */
+  border: 1px solid black; /* Optional border */
+  margin: 5px;
+  color: #CCFFCC;
 }
 

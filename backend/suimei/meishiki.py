@@ -983,7 +983,7 @@ class Meishi:
         self.kakyoku = self.kakyokuAnalysis()
         print("OK")
 
-        self.computeFiveElementEnergy()
+        self.element_energy = self.computeFiveElementEnergy()
 
 
 if __name__ == '__main__':

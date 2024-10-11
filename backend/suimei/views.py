@@ -56,7 +56,8 @@ class SuimeiView(APIView):
             "daiun_table": {
                 "daiun": meishi.daiunList,
                 "year_table":meishi.yearList,
-            }
+            },
+            "element_energy":meishi.element_energy,
         }  # Your custom JSON data
         print(meishi.daiunList)
 
