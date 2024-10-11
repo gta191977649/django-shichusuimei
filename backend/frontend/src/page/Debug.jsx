@@ -4,8 +4,9 @@ import Element from '../components/Element';
 import ShinTypeChart from '../components/ShinTypeChart';
 import DaiunTable from '../components/DaiunTable'
 import YoujinTable from '../components/YoujinTable'
-import ProgressBar from 'react-bootstrap/ProgressBar';
 import CustomProgressBar from '../components/CustomProgressBar';
+import FiveElementChart from '../components/FiveElementChart';
+import { getFiveElementEnergy } from '../common';
 export default function Debug() {
   const tableWidth = "380px"
   const titleColWidth = "280px"
@@ -15,12 +16,12 @@ export default function Debug() {
   const [gender,setGender] = useState(1)
   const [response,setResponse] = useState()
 
-  const getFiveElementEnergy = (response,element_type) => {
-    if(!response) return 0
-    const total = Object.values(response.element_energy).reduce((sum, val) => sum + val, 0)
-    console.log(response.element_energy[element_type] / total)
-    return response.element_energy[element_type] / total
-  }
+  // const getFiveElementEnergy = (response,element_type) => {
+  //   if(!response) return 0
+  //   const total = Object.values(response.element_energy).reduce((sum, val) => sum + val, 0)
+  //   console.log(response.element_energy[element_type] / total)
+  //   return response.element_energy[element_type] / total
+  // }
   const handleSubmit = () => {
     if (date && time && gender) {
       console.log(date,time,gender)
@@ -141,6 +142,13 @@ export default function Debug() {
         </tr>
       </table>
       <table style={{width:tableWidth}}>
+        <tr>
+          <td colSpan={2} style={{width:titleColWidth}}>
+            {/* Five Element Radar Chart */}
+            {response ? <FiveElementChart response={response} /> : "-"}
+            
+          </td>
+        </tr>
         <tr>
           <th>木</th>
           <td style={{width:titleColWidth}}>

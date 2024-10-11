@@ -169,6 +169,6 @@ rb, rt {
   border-radius: 0px; /* Rounded corners */
   border: 1px solid black; /* Optional border */
   margin: 5px;
-  color: #CCFFCC;
+  color: rgb(204, 255, 204);
 }
 
