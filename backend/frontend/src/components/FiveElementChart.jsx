@@ -59,7 +59,7 @@ const FiveElementChart = ({ response }) => {
             labels: {
               font: {
                 family: 'Noto Serif JP', // Custom font for the legend
-                size: 22,
+                size: 18,
                 weight: 'bold',
             },
             },
