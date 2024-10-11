@@ -184,7 +184,7 @@ export default function Debug() {
           <td style={{width:titleColWidth,textAlign:'center'}} className='display-linebreak'>
             <details>
               <summary>展開</summary>
-              ⚠「五行生剋」と「刑・冲・破・害」それについて考えてません！
+              ⚠「五行生剋」と「刑・冲・破・害」の関係については考えていません！
             </details>
           </td>
         </tr>
