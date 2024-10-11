@@ -179,6 +179,15 @@ export default function Debug() {
             {response ? <CustomProgressBar min={0} max={1} color="royalblue" value={getFiveElementEnergy(response,"水")} /> : "-"}
           </td>
         </tr>
+        <tr>
+          <th>注記</th>
+          <td style={{width:titleColWidth,textAlign:'center'}} className='display-linebreak'>
+            <details>
+              <summary>展開</summary>
+              ⚠「五行生剋」と「刑・冲・破・害」それについて考えてません！
+            </details>
+          </td>
+        </tr>
       </table>
       <br/>
        {/* 命式 */}
