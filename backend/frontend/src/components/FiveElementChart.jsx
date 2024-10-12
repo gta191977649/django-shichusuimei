@@ -9,7 +9,7 @@ ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, 
 const FiveElementChart = ({ response }) => {
   
     const radarData = {
-        labels: ['木', '火', '土', '金', '水'], // Element names
+        labels: [`木:${response.element_energy.relation["木"]}`, `火:${response.element_energy.relation["火"]}`, `土:${response.element_energy.relation["土"]}`, `金:${response.element_energy.relation["金"]}`, `水:${response.element_energy.relation["水"]}`], // Element names
         datasets: [
             {
                 label: '五行エネルギー',
@@ -29,43 +29,52 @@ const FiveElementChart = ({ response }) => {
     };
 
     const radarOptions = {
-        scales: {
-          r: {
-            angleLines: {
-              color: 'black', // Black lines for radial axes
+      scales: {
+        r: {
+          angleLines: {
+            color: 'black', // Black lines for radial axes
+          },
+          grid: {
+            color: 'black', // Black grid lines for the circular grid
+          },
+          pointLabels: {
+            font: {
+              family: 'Noto Serif JP', // Custom font for the labels
+              size: 20,
+              weight: 'bold',
             },
-            grid: {
-              color: 'black', // Black grid lines for the circular grid
+            color: 'black', // Black color for the axis labels
+          },
+          ticks: {
+            display: true,
+            font: {
+              family: 'Noto Serif JP', // Custom font for ticks
             },
-            pointLabels: {
-              font: {
-                family: 'Noto Serif JP', // Custom font for the labels
-                size: 22,
-                weight: 'bold',
-              },
-              color: 'black', // Black color for the axis labels
-            },
-            ticks: {
-              display: true,
-              font: {
-                family: 'Noto Serif JP', // Custom font for ticks
-              },
-              color: 'black', // Black color for the ticks
+            color: 'black', // Black color for the ticks
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          labels: {
+            font: {
+              family: 'Noto Serif JP', // Custom font for the legend
+              size: 18,
+              weight: 'bold',
             },
           },
         },
-        plugins: {
-          legend: {
-            labels: {
-              font: {
-                family: 'Noto Serif JP', // Custom font for the legend
-                size: 18,
-                weight: 'bold',
-            },
-            },
-          },
-        },
-    };  
+      },
+      layout: {
+        padding: {
+          top: 10,
+          right: 10,
+          bottom: 10,
+          left: 10
+        }
+      }
+  };
+  
     
 
   return (

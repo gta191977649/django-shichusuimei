@@ -172,3 +172,13 @@ rb, rt {
   color: rgb(204, 255, 204);
 }
 
+.header-debug {
+  background-color: #000;
+  color: white;
+  display: flex;
+  padding-left: 10px;
+}
+.header-debug li{
+  list-style-type: none;
+  padding: 2px;
+}

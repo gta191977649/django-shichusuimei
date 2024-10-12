@@ -363,6 +363,17 @@ class Meishi:
 
         return Meishi.TsukireiKeisuMatrix[element_index][month_index]
 
+    def getFiveElementTushenRelation(self):
+        higen_element = Meishi.gogyo[Meishi.gogyo_kan[Meishi.kan.index(self.higen)]]
+        relation = self.gogyo_seikei[higen_element]
+        key_mapping = {'自星': '比劫', '印星': '印星', '泄星': '食傷', '官星': '官星', '財星': '財星'}
+
+        # Create the relation dictionary with the new keys
+        relation = {key_mapping[k]: v for k, v in relation.items()}
+
+        # Reverse the key-value pairs
+        reversed_relation = {v: k for k, v in relation.items()}
+        return reversed_relation
     # 五行エネルギー計算
     def computeFiveElementEnergy(self):
         energy = {
@@ -983,11 +994,16 @@ class Meishi:
         self.kakyoku = self.kakyokuAnalysis()
         print("OK")
 
-        self.element_energy = self.computeFiveElementEnergy()
+        # 推算通变星
+
+        self.element_energy = {
+            "energy": self.computeFiveElementEnergy(),
+            "relation": self.getFiveElementTushenRelation()
+        }
 
 
 if __name__ == '__main__':
-    date = datetime.datetime(1997, 2, 14, 2, 58)
+    date = datetime.datetime(1997, 2, 7, 9, 25)
 
     meishi = Meishi(date)
     kankou = meishi.check_kangou("己","甲")
