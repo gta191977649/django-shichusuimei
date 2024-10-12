@@ -366,7 +366,7 @@ class Meishi:
     def getFiveElementTushenRelation(self):
         higen_element = Meishi.gogyo[Meishi.gogyo_kan[Meishi.kan.index(self.higen)]]
         relation = self.gogyo_seikei[higen_element]
-        key_mapping = {'自星': '比劫', '印星': '印星', '泄星': '食傷', '官星': '官星', '財星': '財星'}
+        key_mapping = {'自星': '比劫', '印星': '印綬', '泄星': '食傷', '官星': '官殺', '財星': '財才'}
 
         # Create the relation dictionary with the new keys
         relation = {key_mapping[k]: v for k, v in relation.items()}
