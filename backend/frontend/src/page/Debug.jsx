@@ -10,11 +10,11 @@ import { getFiveElementEnergy } from '../common';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 
 export default function Debug() {
-  const tableWidth = "380px"
-  const titleColWidth = "280px"
+  const tableWidth = "350px"
+  const titleColWidth = "250px"
   const daiun_step = 12
-  const [date,setDate] = useState()
-  const [time,setTime] = useState()
+  const [date,setDate] = useState("1997-01-01")
+  const [time,setTime] = useState("00:00")
   const [gender,setGender] = useState(1)
   const [response,setResponse] = useState()
   const [elementRatio,setElementRatio] = useState()
@@ -83,11 +83,11 @@ export default function Debug() {
         </tr>
         <tr>
           <th>誕生日<span className='text-required'>*</span></th>
-          <td className='require'><input onChange={e => setDate(e.target.value)} className='table-input' type="date"/></td>
+          <td className='require'><input value={date} onChange={e => setDate(e.target.value)} className='table-input' type="date"/></td>
         </tr>
         <tr>
           <th>誕生時間<span className='text-required'>*</span></th>
-          <td className='require'><input onChange={e => setTime(e.target.value)} className='table-input' type="time"/></td>
+          <td className='require'><input value={time} onChange={e => setTime(e.target.value)} className='table-input' type="time"/></td>
         </tr>
         <tr>
           <th>性別<span className='text-required'>*</span></th>

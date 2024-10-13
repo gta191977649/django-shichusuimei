@@ -183,3 +183,9 @@ rb, rt {
   list-style-type: none;
   padding: 2px;
 }
+
+@media (max-width: 960px) {
+  .header-debug {
+    display: none;
+  }
+}
