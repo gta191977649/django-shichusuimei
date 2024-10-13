@@ -374,6 +374,7 @@ class Meishi:
         # Reverse the key-value pairs
         reversed_relation = {v: k for k, v in relation.items()}
         return reversed_relation
+
     # 五行エネルギー計算
     def computeFiveElementEnergy(self):
         energy = {
@@ -406,7 +407,7 @@ class Meishi:
         for element in energy:
             energy[element] *= self.getElementsEnergyMonthConstant(tsukiren,element)
 
-        print(energy,tsukiren+"月生")
+        #print(energy,tsukiren+"月生")
         return energy
     # 大運計算
     def getDaiunList(self, unjun_type, unjun_step=11):

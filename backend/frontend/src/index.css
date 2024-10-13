@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -24,7 +25,7 @@
 
 body {
   font-synthesis: none;
-  font-family: "Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
+  font-family: "BIZ UDGothic","Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
   font-style: normal;
   -webkit-font-smoothing: antialiased;
 }
@@ -59,7 +60,7 @@ th {
 }
 
 .table-input {
-  font-family: "Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
+  font-family: "BIZ UDGothic","Noto Serif JP","A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho", "MS PMincho" ,serif;
   width: 90%;
   border:0;outline:0;
   text-align: center;

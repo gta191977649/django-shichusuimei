@@ -7,6 +7,8 @@ import YoujinTable from '../components/YoujinTable'
 import CustomProgressBar from '../components/CustomProgressBar';
 import FiveElementChart from '../components/FiveElementChart';
 import { getFiveElementEnergy } from '../common';
+import ProgressBar from 'react-bootstrap/ProgressBar';
+
 export default function Debug() {
   const tableWidth = "380px"
   const titleColWidth = "280px"
@@ -15,13 +17,32 @@ export default function Debug() {
   const [time,setTime] = useState()
   const [gender,setGender] = useState(1)
   const [response,setResponse] = useState()
+  const [elementRatio,setElementRatio] = useState()
+  const calculateRadio = () => {
+    if(response && response.element_energy) {
+      let friendly = 0
+      let enemy = 0
 
-  // const getFiveElementEnergy = (response,element_type) => {
-  //   if(!response) return 0
-  //   const total = Object.values(response.element_energy).reduce((sum, val) => sum + val, 0)
-  //   console.log(response.element_energy[element_type] / total)
-  //   return response.element_energy[element_type] / total
-  // }
+      for(const element in response.element_energy.relation){
+        let relation = response.element_energy.relation[element]
+        if(["比劫", "印綬"].includes(relation)) {
+          //friendly.add(element)
+          let score = getFiveElementEnergy(response,element)
+          friendly += score
+        }else{
+          let score = getFiveElementEnergy(response,element)
+          enemy += score
+        }
+      }
+      setElementRatio([friendly *100,enemy*100])
+      console.log(friendly,enemy)
+    }
+  }
+
+  useEffect(()=>{
+    calculateRadio()
+  },[response])
+
   const handleSubmit = () => {
     if (date && time && gender) {
       console.log(date,time,gender)
@@ -40,7 +61,7 @@ export default function Debug() {
     })
     .then((res) => res.data)
     .then((data) => {
-        console.log(data);
+        console.log(data)
         setResponse(data)
     })
     .catch((err) => alert(err));
@@ -177,6 +198,18 @@ export default function Debug() {
           <th>水</th>
           <td style={{width:titleColWidth}}>
             {response ? <CustomProgressBar min={0} max={1} color="royalblue" value={getFiveElementEnergy(response,"水")} /> : "-"}
+          </td>
+        </tr>
+        <tr>
+          <th>割合</th>
+          <td style={{width:titleColWidth}}>
+            {elementRatio ? <CustomProgressBar
+              bars={[
+                { color: 'black', value: elementRatio[0], max: 1 ,label:"同",labelColor: 'white' },
+                { color: '#e9ecef', value: elementRatio[1], max: 1,label:"異",labelColor: 'black' },
+              ]}
+            /> : "-"}
+            
           </td>
         </tr>
         <tr>
