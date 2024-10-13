@@ -13,8 +13,8 @@ function App() {
   return (
     <BrowserRouter>
       <div className='header-debug'>
-        <li><Link to="">「通常版DEBUG」</Link></li>
-        <li><Link to="/debug">「精密版DEBUG」</Link></li>
+        <li><Link to="">「通常版」</Link></li>
+        <li><Link to="/debug">「精密版」</Link></li>
         <li><Link to="/app">「APP」</Link></li>
         <li style={{color:"lightblue"}}>･ Developer: Nurupo | 三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る</li>
       </div>
