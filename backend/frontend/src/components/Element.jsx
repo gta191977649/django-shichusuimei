@@ -5,7 +5,7 @@ export default function Element(props) {
   const getElementColor = (element) => {
     const colorTable = {
       "forestgreen": ["甲", "乙", "寅", "卯"],
-      "red": ["丙", "丁", "巳", "午"],
+      "#E64841": ["丙", "丁", "巳", "午"],
       "saddlebrown": ["戌","戊", "己", "未","丑","辰"],
       "darkorange": ["庚", "辛", "申", "酉"],
       "royalblue": ["壬", "癸", "亥", "子"],

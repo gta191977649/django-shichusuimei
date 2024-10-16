@@ -58,6 +58,7 @@ class SuimeiView(APIView):
                 "year_table":meishi.yearList,
             },
             "element_energy":meishi.element_energy,
+            "gouka":meishi.gouka,
         }  # Your custom JSON data
         print(meishi.daiunList)
 

@@ -2,6 +2,7 @@ import datetime
 import cnlunar
 import math
 import numpy as np
+from suimei.model.Gouka import *
 def trans(M):
     return [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]
 class Meishi:
@@ -245,6 +246,8 @@ class Meishi:
         ["戌", "辰"],
         ["亥", "巳"],
     ]
+
+
 
     def check_six_ka(self,tsuhen):
         #'比肩', '劫財'
@@ -1001,7 +1004,10 @@ class Meishi:
             "energy": self.computeFiveElementEnergy(),
             "relation": self.getFiveElementTushenRelation()
         }
+        # 合化状況
+        gk = Gouka(meishiki=self.meisiki)
 
+        self.gouka = gk.gouka
 
 if __name__ == '__main__':
     date = datetime.datetime(1997, 2, 7, 9, 25)

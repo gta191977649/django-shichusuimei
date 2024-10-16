@@ -18,6 +18,7 @@
     "chart.js": "^4.4.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.446.0",
     "onsenui": "^2.12.8",
     "react": "^18.3.1",

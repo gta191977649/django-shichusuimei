@@ -7,7 +7,10 @@ import YoujinTable from '../components/YoujinTable'
 import CustomProgressBar from '../components/CustomProgressBar';
 import FiveElementChart from '../components/FiveElementChart';
 import { getFiveElementEnergy } from '../common';
+import GoukaAnlysis from '../components/GoukaAnlysis';
 import ProgressBar from 'react-bootstrap/ProgressBar';
+import Tab from 'react-bootstrap/Tab';
+import Tabs from 'react-bootstrap/Tabs';
 
 export default function Debug() {
   const tableWidth = "350px"
@@ -18,6 +21,12 @@ export default function Debug() {
   const [gender,setGender] = useState(1)
   const [response,setResponse] = useState()
   const [elementRatio,setElementRatio] = useState()
+  const [activeTab, setActiveTab] = useState('meishiki');
+
+  const handleTabSelect = (key) => {
+    setActiveTab(key);
+  };
+
   const calculateRadio = () => {
     if(response && response.element_energy) {
       let friendly = 0
@@ -63,6 +72,7 @@ export default function Debug() {
     .then((data) => {
         console.log(data)
         setResponse(data)
+        setActiveTab("meishiki")
     })
     .catch((err) => alert(err));
   }
@@ -104,64 +114,82 @@ export default function Debug() {
       </table>
       <br/>
       {/* 命式表 */}
-      <table style={{width:tableWidth}}>
-        <tr>
-          <th>年柱</th>
-          <th>月柱</th>
-          <th>日柱</th>
-          <th>時柱</th>
-          <th>-</th>
-        </tr>
-        
-        <tr> {/* 天干 */}
-          <td><Element name={response ? response.tenkan[0] : "･"} tsuhen={response ? response.junshi.tenkan[0] : ""}/></td>
-          <td><Element name={response ? response.tenkan[1] : "･"} tsuhen={response ? response.junshi.tenkan[1] : ""}/></td>
-          <td><Element name={response ? response.tenkan[2] : "･"} tsuhen={response ? response.junshi.tenkan[2] : ""}/></td>
-          <td><Element name={response ? response.tenkan[3] : "･"} tsuhen={response ? response.junshi.tenkan[3] : ""}/></td>
-          <th>天干</th>
-        </tr>
-        <tr> {/* 地支 */}
-          <td><Element name={response ? response.chishi[0] : "･"} tsuhen={response ? response.junshi.zoukan_honki[0] : ""}/></td>
-          <td><Element name={response ? response.chishi[1] : "･"} tsuhen={response ? response.junshi.zoukan_honki[1] : ""}/></td>
-          <td><Element name={response ? response.chishi[2] : "･"} tsuhen={response ? response.junshi.zoukan_honki[2] : ""}/></td>
-          <td><Element name={response ? response.chishi[3] : "･"} tsuhen={response ? response.junshi.zoukan_honki[3] : ""}/></td>
+      <Tabs
+      activeKey={activeTab} onSelect={handleTabSelect}
+      defaultActiveKey="meishiki"
+      id="uncontrolled-tab-example"
+      className="meishiki-tab" style={{width:tableWidth}}
+      >
+        <Tab eventKey="meishiki" title="命式">
+            <table style={{width:tableWidth}}>
+            <tr>
+              <th>年柱</th>
+              <th>月柱</th>
+              <th>日柱</th>
+              <th>時柱</th>
+              <th>-</th>
+            </tr>
+            
+            <tr> {/* 天干 */}
+              <td><Element name={response ? response.tenkan[0] : "･"} tsuhen={response ? response.junshi.tenkan[0] : ""}/></td>
+              <td><Element name={response ? response.tenkan[1] : "･"} tsuhen={response ? response.junshi.tenkan[1] : ""}/></td>
+              <td><Element name={response ? response.tenkan[2] : "･"} tsuhen={response ? response.junshi.tenkan[2] : ""}/></td>
+              <td><Element name={response ? response.tenkan[3] : "･"} tsuhen={response ? response.junshi.tenkan[3] : ""}/></td>
+              <th>天干</th>
+            </tr>
+            <tr> {/* 地支 */}
+              <td><Element name={response ? response.chishi[0] : "･"} tsuhen={response ? response.junshi.zoukan_honki[0] : ""}/></td>
+              <td><Element name={response ? response.chishi[1] : "･"} tsuhen={response ? response.junshi.zoukan_honki[1] : ""}/></td>
+              <td><Element name={response ? response.chishi[2] : "･"} tsuhen={response ? response.junshi.zoukan_honki[2] : ""}/></td>
+              <td><Element name={response ? response.chishi[3] : "･"} tsuhen={response ? response.junshi.zoukan_honki[3] : ""}/></td>
 
-          <th>地支</th>
-        </tr>
-        <tr> {/* 蔵干(本気) */}
-          <td><Element name={response ? response.zoukan[0][2] : "･"} tsuhen="同上"/></td>
-          <td><Element name={response ? response.zoukan[1][2] : "･"} tsuhen="同上"/></td>
-          <td><Element name={response ? response.zoukan[2][2] : "･"} tsuhen="同上"/></td>
-          <td><Element name={response ? response.zoukan[3][2] : "･"} tsuhen="同上"/></td>   
-          <th>蔵干</th>
-        </tr>
-        <tr> {/* 蔵干中気 */}
-          <td><Element name={response ? response.zoukan[0][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[0] : ""}/></td>
-          <td><Element name={response ? response.zoukan[1][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[1] : ""}/></td>
-          <td><Element name={response ? response.zoukan[2][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[2] : ""}/></td>
-          <td><Element name={response ? response.zoukan[3][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[3] : ""}/></td>
-          <th>中気</th>
-        </tr>
-        <tr> {/* 蔵干余気 */}
-          <td><Element name={response ? response.zoukan[0][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[0] : ""}/></td>
-          <td><Element name={response ? response.zoukan[1][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[1] : ""}/></td>
-          <td><Element name={response ? response.zoukan[2][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[2] : ""}/></td>
-          <td><Element name={response ? response.zoukan[3][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[3] : ""}/></td>
-          <th>余気</th>
-        </tr>
-        <tr> {/* 十二運星 */}
-          <td>{response ? response.juniunshi[0] : "･"}</td>
-          <td>{response ? response.juniunshi[1] : "･"}</td>
-          <td>{response ? response.juniunshi[2] : "･"}</td>
-          <td>{response ? response.juniunshi[3] : "･"}</td>
-          <th>十二運星</th>
-        </tr>
-        <tr>
-          <td colSpan="4">{response ? response.kubou : "･"}</td>
-          <th>空亡</th>
+              <th>地支</th>
+            </tr>
+            <tr> {/* 蔵干(本気) */}
+              <td><Element name={response ? response.zoukan[0][2] : "･"} tsuhen="同上"/></td>
+              <td><Element name={response ? response.zoukan[1][2] : "･"} tsuhen="同上"/></td>
+              <td><Element name={response ? response.zoukan[2][2] : "･"} tsuhen="同上"/></td>
+              <td><Element name={response ? response.zoukan[3][2] : "･"} tsuhen="同上"/></td>   
+              <th>蔵干</th>
+            </tr>
+            <tr> {/* 蔵干中気 */}
+              <td><Element name={response ? response.zoukan[0][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[0] : ""}/></td>
+              <td><Element name={response ? response.zoukan[1][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[1] : ""}/></td>
+              <td><Element name={response ? response.zoukan[2][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[2] : ""}/></td>
+              <td><Element name={response ? response.zoukan[3][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[3] : ""}/></td>
+              <th>中気</th>
+            </tr>
+            <tr> {/* 蔵干余気 */}
+              <td><Element name={response ? response.zoukan[0][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[0] : ""}/></td>
+              <td><Element name={response ? response.zoukan[1][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[1] : ""}/></td>
+              <td><Element name={response ? response.zoukan[2][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[2] : ""}/></td>
+              <td><Element name={response ? response.zoukan[3][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[3] : ""}/></td>
+              <th>余気</th>
+            </tr>
+            <tr> {/* 十二運星 */}
+              <td>{response ? response.juniunshi[0] : "･"}</td>
+              <td>{response ? response.juniunshi[1] : "･"}</td>
+              <td>{response ? response.juniunshi[2] : "･"}</td>
+              <td>{response ? response.juniunshi[3] : "･"}</td>
+              <th>十二運星</th>
+            </tr>
+            <tr>
+              <td colSpan="4">{response ? response.kubou : "･"}</td>
+              <th>空亡</th>
 
-        </tr>
-      </table>
+            </tr>
+          </table>
+        </Tab>
+        <Tab eventKey="kanshi" title="刑・冲・破・害">
+          {activeTab === 'kanshi' && response ? (
+            <GoukaAnlysis tableWidth={tableWidth} response={response} />
+          ) : null}
+        </Tab>
+        <Tab eventKey="liutong" title="流通">
+          In Development
+        </Tab>
+      </Tabs>
+      
       <table style={{width:tableWidth}}>
         <tr>
           <td colSpan={2} style={{width:titleColWidth}}>
@@ -179,7 +207,7 @@ export default function Debug() {
         <tr>
           <th>火</th>
           <td style={{width:titleColWidth}}>
-            {response ? <CustomProgressBar min={0} max={1} color="red" value={getFiveElementEnergy(response,"火")} /> : "-"}
+            {response ? <CustomProgressBar min={0} max={1} color="#E64841" value={getFiveElementEnergy(response,"火")} /> : "-"}
           </td>
         </tr>
         <tr>

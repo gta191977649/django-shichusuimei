@@ -102,7 +102,7 @@ const ShinTypeChart = ({ width,value }) => {
             ${getPosition(value)-8},${((40 * COMPACTNESS) - VERTICAL_PADDING)} 
             ${getPosition(value)+8},${((40 * COMPACTNESS) - VERTICAL_PADDING)}
           `}
-          fill="red"
+          fill="#E64841"
         />
       </svg>
     </div>
