@@ -148,7 +148,7 @@ class Gouka:
                 # 天干相冲
                 kanchu = self.check(kan_1, kan_2, "干冲")
                 if kanchu: self.gouka["kan"].append({
-                        "type": "干冲",
+                        "type": "干沖",
                         "element": [kan_1, kan_2],
                         "to": None,
                         "index": [i, j]
@@ -185,7 +185,7 @@ class Gouka:
                 # 地支支冲
                 shi_chong = self.check(shi_1, shi_2, "支冲")
                 if shi_chong: self.gouka["shi"].append({
-                    "type": "支冲",
+                    "type": "支沖",
                     "element": [shi_1, shi_2],
                     "to": None,
                     "index": [i, j]

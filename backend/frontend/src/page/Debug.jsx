@@ -180,7 +180,7 @@ export default function Debug() {
             </tr>
           </table>
         </Tab>
-        <Tab eventKey="kanshi" title="刑・冲・破・害">
+        <Tab eventKey="kanshi" title="刑・沖・破・害">
           {activeTab === 'kanshi' && response ? (
             <GoukaAnlysis tableWidth={tableWidth} response={response} />
           ) : null}
@@ -245,7 +245,7 @@ export default function Debug() {
           <td style={{width:titleColWidth,textAlign:'center'}} className='display-linebreak'>
             <details>
               <summary>展開</summary>
-              ⚠「五行生剋」と「刑・冲・破・害」の関係については考えていません！
+              ⚠「五行生剋」と「刑・沖・破・害」の関係については考えていません！
             </details>
           </td>
         </tr>
