@@ -247,7 +247,44 @@ class Meishi:
         ["亥", "巳"],
     ]
 
+    # 旺相休囚死表 （https://www.sohu.com/a/288872833_120083344）
+    # 木，火，土，金，水
+    gogyoEnergySeasonTable = {
+        "寅": ["旺", "相", "死", "囚", "休"],
+        "卯": ["旺", "相", "死", "囚", "休"],
+        "辰": ["相", "休", "旺", "相", "死"],
+        "巳": ["休", "旺", "相", "死", "囚"],
+        "午": ["休", "旺", "相", "死", "囚"],
+        "未": ["囚", "相", "旺", "休", "死"],
+        "申": ["死", "囚", "休", "旺", "相"],
+        "酉": ["死", "囚", "休", "旺", "相"],
+        "戌": ["囚", "休", "旺", "相", "死"],
+        "亥": ["相", "死", "囚", "休", "旺"],
+        "子": ["相", "死", "囚", "休", "旺"],
+        "丑": ["囚", "休", "旺", "相", "相"]
+    }
 
+    def getGogyoEnergyFromMonth(self,month,element):
+        """
+          Get the energy state of a specific element in a given month
+
+          Args:
+              month (str): Chinese zodiac month (e.g., "寅", "卯", etc.)
+              element (str): One of the five elements ("木", "火", "土", "金", "水")
+
+          Returns:
+              str: Energy state ("旺", "相", "休", "囚", "死", "余气")
+          """
+        # Element index mapping
+        elementIndex = {"木": 0, "火": 1, "土": 2, "金": 3, "水": 4}
+
+        # Input validation
+        if month not in Meishi.gogyoEnergySeasonTable:
+            raise ValueError(f"Invalid month: {month}")
+        if element not in elementIndex:
+            raise ValueError(f"Invalid element: {element}")
+
+        return Meishi.gogyoEnergySeasonTable[month][elementIndex[element]]
 
     def check_six_ka(self,tsuhen):
         #'比肩', '劫財'
@@ -381,11 +418,11 @@ class Meishi:
     # 五行エネルギー計算
     def computeFiveElementEnergy(self):
         energy = {
-            "木":0,
-            "火":0,
-            "土":0,
-            "金":0,
-            "水":0,
+            "木":0.0,
+            "火":0.0,
+            "土":0.0,
+            "金":0.0,
+            "水":0.0,
         }
         # 月令
         tsukiren = self.meisiki["shi"][1]["element"]
@@ -406,9 +443,23 @@ class Meishi:
                 energy[zoukan_type] += zoukan_strength
                 print(zoukan_name,zoukan_type,zoukan_strength)
 
+        #
+        season_energy = {
+            "旺":10,
+            "相":7,
+            "死":2.5,
+            "囚":3,
+            "休":5,
+        }
         # 月令係数計算
         for element in energy:
             energy[element] *= self.getElementsEnergyMonthConstant(tsukiren,element)
+        # 月令係数計算 #2
+        # for element in energy:
+        #     energy_char = self.getGogyoEnergyFromMonth(self.tsukirei,element)
+        #     energy_factor = season_energy[energy_char]
+        #     print(energy)
+        #     energy[element] *= energy_factor
 
         #print(energy,tsukiren+"月生")
         return energy
@@ -999,10 +1050,19 @@ class Meishi:
         print("OK")
 
         # 推算通变星
-
+        self.tsukirei = self.meisiki["shi"][1]["element"]
+        season_energy = {
+            "木": self.getGogyoEnergyFromMonth(self.tsukirei,"木"),
+            "火": self.getGogyoEnergyFromMonth(self.tsukirei,"火"),
+            "土": self.getGogyoEnergyFromMonth(self.tsukirei,"土"),
+            "金": self.getGogyoEnergyFromMonth(self.tsukirei,"金"),
+            "水": self.getGogyoEnergyFromMonth(self.tsukirei,"水"),
+        }
         self.element_energy = {
             "energy": self.computeFiveElementEnergy(),
-            "relation": self.getFiveElementTushenRelation()
+            "relation": self.getFiveElementTushenRelation(),
+            "season": self.tsukirei,
+            "season_energy": season_energy,
         }
         # 合化状況
         gk = Gouka(meishiki=self.meisiki)

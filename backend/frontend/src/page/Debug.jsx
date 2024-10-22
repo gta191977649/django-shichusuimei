@@ -199,6 +199,19 @@ export default function Debug() {
           </td>
         </tr>
         <tr>
+          <td colSpan={2}>
+            {response ? 
+              `木:(${response.element_energy.season_energy["木"]}) 
+              火:(${response.element_energy.season_energy["火"]})
+              土:(${response.element_energy.season_energy["土"]})
+              金:(${response.element_energy.season_energy["金"]})
+              水:(${response.element_energy.season_energy["水"]})`
+            
+            :""}
+          </td>
+         
+        </tr>
+        <tr>
           <th>木</th>
           <td style={{width:titleColWidth}}>
             {response ? <CustomProgressBar color="forestgreen" min={0} max={1} value={getFiveElementEnergy(response,"木")} /> : "-"}
