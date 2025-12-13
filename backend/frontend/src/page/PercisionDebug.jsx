@@ -1,11 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import api from "../api";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
 import BasicMeishiki from "./subpage/BasicMeishiki";
 import BasicMeishikiTest from "./subpage/BasicMeishikiTest";
+import "./PercisionDebug.css";
 
-export default function PercisionDebug({ profile,setSelectedProfile }) {
+const KANA_GROUPS = ["あ", "か", "さ", "た", "な", "は", "ま", "や", "ら", "わ"];
+
+export default function PercisionDebug({ profile, setSelectedProfile }) {
   const [response, setResponse] = useState(false);
   const [ai_response, setAIResponse] = useState(null);
 
@@ -185,118 +188,159 @@ export default function PercisionDebug({ profile,setSelectedProfile }) {
   };
 
   return (
-    <div className="container">
-      <style>{`
-        .btn-pink { background-color: #ff99b5; color: white; }
-        .btn-pink:hover { background-color: #ff6f96ff; color: white; }
-      `}</style>
-
-      {/* Top controls */}
-      <div className="container my-3">
-        <div className="d-flex justify-content-center align-items-center flex-wrap gap-3 text-center">
-          {/* Name */}
-          <div className="input-group" style={{ width: "140px" }}>
-            <input
-              type="text"
-              className="form-control text-center"
-              placeholder="名称"
-              value={form.name}
-              onChange={onChange("name")}
-            />
+    <div className="percision-debug">
+      <div className="pd-shell">
+        <div className="pd-title-row">
+          <div className="pd-title-copy">
+            <div className="pd-title">最新配信命式</div>
+            <div className="pd-title-sub">新しく生成された命式の一覧です。詳細を選択してください。</div>
           </div>
-
-          {/* Date + Time + Gender (with Japanese era display) */}
-          <div className="input-group" style={{ width: "460px" }}>
-            <input
-              type="date"
-              className="form-control text-center"
-              value={form.date}
-              onChange={onChange("date")}
-            />
-            <span className="input-group-text">{toJapaneseEra(form.date)}</span>
-            <input
-              type="time"
-              className="form-control text-center"
-              value={form.time}
-              onChange={onChange("time")}
-            />
-            <button
-              type="button"
-              className={`btn ${form.gender === "M" ? "btn-primary" : "btn-pink"}`}
-              onClick={toggleGender}
-            >
-              {form.gender === "M" ? "男" : "女"}
-            </button>
-          </div>
-
-          {/* Actions */}
-          <div className="btn-group">
-            <button
-              type="button"
-              className="btn btn-outline-primary"
-              onClick={save}
-              disabled={!isDirty}
-              title={isDirty ? "" : "无更改"}
-            >
-              {saveMode}
-            </button>
-            <button type="button" className="btn btn-outline-secondary" onClick={ai_query}>
-              解読
+          <div className="pd-title-meta">
+            <div className="pd-counter">
+              <span className="pd-counter-number">99</span>
+              <span className="pd-counter-label">件</span>
+            </div>
+            <button type="button" className="pd-button pd-button--ghost">
+              曲名順にならべる
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <Tabs defaultActiveKey="profile" id="uncontrolled-tab-example" className="mb-3">
-        <Tab eventKey="profile" title="命式盤">
-          <BasicMeishiki data={response} />
-        </Tab>
-        <Tab eventKey="contact" title="細盤分析">
-          <BasicMeishikiTest/>
-        </Tab>
-      </Tabs>
-
-      {/* AI result */}
-      <a href="#" onClick={ai_query}>
-        解読
-      </a>
-        
-      {Array.isArray(ai_response?.content) && ai_response.content.length > 0 && (
-  <div className="container mt-3">
-    {ai_response.content.map((item, index) => (
-      <div
-        key={index}
-        className="row py-3 border-bottom align-items-start"
-        style={{ lineHeight: "1.8" }}
-      >
-        {/* Left side — title */}
-        <div className="col-12 col-md-3 text-md-end fw-bold mb-2 mb-md-0">
-          《{item.entity}》
-        </div>
-
-        {/* Right side — paragraphs */}
-        <div className="col-12 col-md-9">
-          {item.content
-            .split(/\n+/)
-            .filter((p) => p.trim() !== "")
-            .map((p, i) => (
-              <div key={i} className="mb-2 d-flex align-items-start">
-                <span
-                  className="me-2"
-                  style={{ fontSize: "1.2em", lineHeight: "1.2em", color:"#52c41a"}}
-                >
-                  •
-                </span>
-                <span style={{ color: "#333", whiteSpace: "pre-wrap" }}>{p.trim()}</span>
-              </div>
+        <div className="pd-content">
+          <aside className="pd-sidebar">
+            {KANA_GROUPS.map((kana) => (
+              <button key={kana} type="button" className="pd-sidebar-btn">
+                {kana}
+              </button>
             ))}
+            <div className="pd-sidebar-footer">
+              <button type="button" className="pd-sidebar-btn is-dark">
+                もどる
+              </button>
+              <button type="button" className="pd-sidebar-btn is-dark">
+                トップへ
+              </button>
+            </div>
+          </aside>
+
+          <section className="pd-main">
+            <div className="pd-panel pd-form-panel">
+              <div className="pd-panel-head">
+                <div>
+                  <div className="pd-panel-title">命式プロフィール</div>
+                  <div className="pd-panel-caption">日付・時間を入力後、保存で命式を記録します。</div>
+                </div>
+                <div className="pd-actions">
+                  <button
+                    type="button"
+                    className="pd-button pd-button--primary"
+                    onClick={save}
+                    disabled={!isDirty}
+                    title={isDirty ? "" : "无更改"}
+                  >
+                    {saveMode}
+                  </button>
+                  <button type="button" className="pd-button" onClick={ai_query}>
+                    解読
+                  </button>
+                </div>
+              </div>
+
+              <div className="pd-form-grid">
+                <label className="pd-field">
+                  <span>名称</span>
+                  <input
+                    type="text"
+                    className="pd-input"
+                    placeholder="名称"
+                    value={form.name}
+                    onChange={onChange("name")}
+                  />
+                </label>
+                <label className="pd-field">
+                  <span>日付</span>
+                  <input
+                    type="date"
+                    className="pd-input"
+                    value={form.date}
+                    onChange={onChange("date")}
+                  />
+                </label>
+                <label className="pd-field">
+                  <span>時間</span>
+                  <input
+                    type="time"
+                    className="pd-input"
+                    value={form.time}
+                    onChange={onChange("time")}
+                  />
+                </label>
+                <label className="pd-field">
+                  <span>元号</span>
+                  <div className="pd-era">{toJapaneseEra(form.date)}</div>
+                </label>
+                <label className="pd-field">
+                  <span>性別</span>
+                  <button
+                    type="button"
+                    className={`pd-gender-toggle ${form.gender === "M" ? "is-male" : "is-female"}`}
+                    onClick={toggleGender}
+                  >
+                    {form.gender === "M" ? "男" : "女"}
+                  </button>
+                </label>
+              </div>
+            </div>
+
+            <div className="pd-panel">
+              <div className="pd-panel-head">
+                <div className="pd-panel-title">命式ビュー</div>
+              </div>
+              <Tabs defaultActiveKey="profile" id="percision-tabs" className="pd-tabs-nav">
+                <Tab eventKey="profile" title="命式盤">
+                  <div className="pd-panel-body">
+                    <BasicMeishiki data={response} />
+                  </div>
+                </Tab>
+                <Tab eventKey="contact" title="細盤分析">
+                  <div className="pd-panel-body">
+                    <BasicMeishikiTest />
+                  </div>
+                </Tab>
+              </Tabs>
+            </div>
+
+            {Array.isArray(ai_response?.content) && ai_response.content.length > 0 && (
+              <div className="pd-panel pd-ai-panel">
+                <div className="pd-panel-head">
+                  <div className="pd-panel-title">AI 解読結果</div>
+                  <button type="button" className="pd-button pd-button--ghost" onClick={ai_query}>
+                    更新
+                  </button>
+                </div>
+                <div className="pd-panel-body">
+                  {ai_response.content.map((item, index) => (
+                    <div key={index} className="pd-ai-row">
+                      <div className="pd-ai-entity">《{item.entity}》</div>
+                      <div className="pd-ai-content">
+                        {item.content
+                          .split(/\n+/)
+                          .filter((p) => p.trim() !== "")
+                          .map((p, i) => (
+                            <div key={i} className="pd-ai-line">
+                              <span className="pd-ai-bullet">♪</span>
+                              <span>{p.trim()}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </div>
-    ))}
-  </div>
-)}
-
     </div>
   );
 }
