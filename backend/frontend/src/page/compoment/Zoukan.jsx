@@ -1,10 +1,7 @@
 import React from 'react';
 
-
-
-export default function Element(props) {
-  // Define a function to map element names to colors
-  const getElementColor = (element) => {
+export default function Zoukan({name,tsuhen}) {
+    const getElementColor = (element) => {
     const colorTable = {
       "forestgreen": ["甲", "乙", "寅", "卯"],
       "#E64841": ["丙", "丁", "巳", "午"],
@@ -22,12 +19,11 @@ export default function Element(props) {
   };
 
   // Use the function to get the color for the current element name
-  const color = getElementColor(props.name);
+  const color = getElementColor(name);
 
-  // Return the JSX with dynamic styling based on the element color
   return (
-    <ruby className='text-element'>
-      <span onClick={props.onClick} style={{ color: color, fontWeight: 700 }}>{props.name}</span><rt className='vt'>{props.tsuhen}</rt>
-    </ruby>
-  );
+    <>
+    <span style={{ color: color}}>{name}</span>({tsuhen})
+    </>
+  )
 }

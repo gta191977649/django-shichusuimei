@@ -33,8 +33,8 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 9), gridspec_kw={'height_ratios
 sns.heatmap(TsukireiKeisuMatrix, annot=True, fmt=".3f", ax=ax1,
             xticklabels=TsukireiKeisuHeader, yticklabels=TsukireiKeisuRowLabels,cbar=False)
 ax1.set_title("月令係数表", fontsize=16)
-ax1.set_xlabel("Month", fontsize=14)
-ax1.set_ylabel("Element", fontsize=14)
+ax1.set_xlabel("月", fontsize=14)
+ax1.set_ylabel("五行", fontsize=14)
 ax1.set_xticklabels(ax1.get_xticklabels(), rotation=0, fontsize=12)
 ax1.set_yticklabels(ax1.get_yticklabels(), fontsize=12)
 

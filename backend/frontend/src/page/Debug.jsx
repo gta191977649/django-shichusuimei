@@ -11,6 +11,11 @@ import GoukaAnlysis from '../components/GoukaAnlysis';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
+import Button from 'react-bootstrap/Button';
+import Modal from 'react-bootstrap/Modal';
+import DaiunTrend from '../components/DaiunTrend';
+import Badge from 'react-bootstrap/Badge';
+
 
 export default function Debug() {
   const tableWidth = "350px"
@@ -22,7 +27,65 @@ export default function Debug() {
   const [response,setResponse] = useState()
   const [elementRatio,setElementRatio] = useState()
   const [activeTab, setActiveTab] = useState('meishiki');
+  const [showWiki, setShowWiki] = useState(false);
+  const [wikiKey, setWikiKey] = useState(false);
 
+  function renderModal() {
+    const [content, setWikiContent] = useState("N/A");
+    const [tag, setWikiTag] = useState("");
+    const handleClose = () => setShowWiki(false);
+    const handleShow = () => {
+      setShowWiki(true)
+    };
+
+    useEffect(()=>{
+      if(showWiki){
+        setWikiContent("")
+        query()
+      }
+    },[showWiki])
+    const query = () => {
+      api
+      .get(`/api/wiki/search/?key=${wikiKey}`)
+      .then((res) => res.data)
+      .then((data) => {
+          setWikiTag(data.tag)
+          setWikiContent(data.description)
+          console.log(data)
+      })
+      .catch((err) => {
+        setWikiTag("")
+        setWikiContent("ERROR:未記録用語")
+      });
+    }
+
+    return (
+      <>
+        {/* <Button variant="primary" onClick={handleShow}>
+          Launch demo modal
+        </Button>
+   */}
+        <Modal className='modal-lg' show={showWiki} onHide={handleClose}>
+          <Modal.Header closeButton>
+            <Modal.Title>📖{wikiKey}{tag ? <small>({tag})</small> : ""}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <div className='wikibody' style={{writingMode:"vertical-lr"}} dangerouslySetInnerHTML={{ __html: content }} />
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="primary" onClick={handleClose}>
+              OK
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      </>
+    );
+  }
+
+  const setShowWikiModel = (show,key) => {
+    setShowWiki(show)
+    setWikiKey(key)
+  }
   const handleTabSelect = (key) => {
     setActiveTab(key);
   };
@@ -81,6 +144,7 @@ export default function Debug() {
   
   return (
     <div className='debug-container'>
+      {renderModal()}
       <div>
         NURUPOの四柱推命分析 (専門家用DEBUG PAGE)
         <br/>三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る。
@@ -131,39 +195,39 @@ export default function Debug() {
             </tr>
             
             <tr> {/* 天干 */}
-              <td><Element name={response ? response.tenkan[0] : "･"} tsuhen={response ? response.junshi.tenkan[0] : ""}/></td>
-              <td><Element name={response ? response.tenkan[1] : "･"} tsuhen={response ? response.junshi.tenkan[1] : ""}/></td>
-              <td><Element name={response ? response.tenkan[2] : "･"} tsuhen={response ? response.junshi.tenkan[2] : ""}/></td>
-              <td><Element name={response ? response.tenkan[3] : "･"} tsuhen={response ? response.junshi.tenkan[3] : ""}/></td>
+              <td><Element name={response ? response.tenkan[0] : "･"} tsuhen={response ? response.junshi.tenkan[0] : ""} onClick={()=>setShowWikiModel(true,response.tenkan[0])} /></td>
+              <td><Element name={response ? response.tenkan[1] : "･"} tsuhen={response ? response.junshi.tenkan[1] : ""} onClick={()=>setShowWikiModel(true,response.tenkan[1])}/></td>
+              <td><Element name={response ? response.tenkan[2] : "･"} tsuhen={response ? response.junshi.tenkan[2] : ""} onClick={()=>setShowWikiModel(true,response.tenkan[2])}/></td>
+              <td><Element name={response ? response.tenkan[3] : "･"} tsuhen={response ? response.junshi.tenkan[3] : ""} onClick={()=>setShowWikiModel(true,response.tenkan[3])}/></td>
               <th>天干</th>
             </tr>
             <tr> {/* 地支 */}
-              <td><Element name={response ? response.chishi[0] : "･"} tsuhen={response ? response.junshi.zoukan_honki[0] : ""}/></td>
-              <td><Element name={response ? response.chishi[1] : "･"} tsuhen={response ? response.junshi.zoukan_honki[1] : ""}/></td>
-              <td><Element name={response ? response.chishi[2] : "･"} tsuhen={response ? response.junshi.zoukan_honki[2] : ""}/></td>
-              <td><Element name={response ? response.chishi[3] : "･"} tsuhen={response ? response.junshi.zoukan_honki[3] : ""}/></td>
+              <td><Element name={response ? response.chishi[0] : "･"} tsuhen={response ? response.junshi.zoukan_honki[0] : ""} onClick={()=>setShowWikiModel(true,response.chishi[0])}/></td>
+              <td><Element name={response ? response.chishi[1] : "･"} tsuhen={response ? response.junshi.zoukan_honki[1] : ""} onClick={()=>setShowWikiModel(true,response.chishi[1])}/></td>
+              <td><Element name={response ? response.chishi[2] : "･"} tsuhen={response ? response.junshi.zoukan_honki[2] : ""} onClick={()=>setShowWikiModel(true,response.chishi[2])}/></td>
+              <td><Element name={response ? response.chishi[3] : "･"} tsuhen={response ? response.junshi.zoukan_honki[3] : ""} onClick={()=>setShowWikiModel(true,response.chishi[3])}/></td>
 
               <th>地支</th>
             </tr>
             <tr> {/* 蔵干(本気) */}
-              <td><Element name={response ? response.zoukan[0][2] : "･"} tsuhen="同上"/></td>
-              <td><Element name={response ? response.zoukan[1][2] : "･"} tsuhen="同上"/></td>
-              <td><Element name={response ? response.zoukan[2][2] : "･"} tsuhen="同上"/></td>
-              <td><Element name={response ? response.zoukan[3][2] : "･"} tsuhen="同上"/></td>   
+              <td><Element name={response ? response.zoukan[0][2] : "･"} tsuhen="同上" onClick={()=>setShowWikiModel(true,response.zoukan[0][2])}/></td>
+              <td><Element name={response ? response.zoukan[1][2] : "･"} tsuhen="同上" onClick={()=>setShowWikiModel(true,response.zoukan[1][2])}/></td>
+              <td><Element name={response ? response.zoukan[2][2] : "･"} tsuhen="同上" onClick={()=>setShowWikiModel(true,response.zoukan[2][2])}/></td>
+              <td><Element name={response ? response.zoukan[3][2] : "･"} tsuhen="同上" onClick={()=>setShowWikiModel(true,response.zoukan[3][2])}/></td>   
               <th>蔵干</th>
             </tr>
             <tr> {/* 蔵干中気 */}
-              <td><Element name={response ? response.zoukan[0][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[0] : ""}/></td>
-              <td><Element name={response ? response.zoukan[1][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[1] : ""}/></td>
-              <td><Element name={response ? response.zoukan[2][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[2] : ""}/></td>
-              <td><Element name={response ? response.zoukan[3][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[3] : ""}/></td>
+              <td><Element name={response ? response.zoukan[0][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[0] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[0][1])}/></td>
+              <td><Element name={response ? response.zoukan[1][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[1] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[1][1])}/></td>
+              <td><Element name={response ? response.zoukan[2][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[2] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[2][1])}/></td>
+              <td><Element name={response ? response.zoukan[3][1] : "･"} tsuhen={response ? response.junshi.zoukan_chuki[3] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[3][1])}/></td>
               <th>中気</th>
             </tr>
             <tr> {/* 蔵干余気 */}
-              <td><Element name={response ? response.zoukan[0][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[0] : ""}/></td>
-              <td><Element name={response ? response.zoukan[1][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[1] : ""}/></td>
-              <td><Element name={response ? response.zoukan[2][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[2] : ""}/></td>
-              <td><Element name={response ? response.zoukan[3][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[3] : ""}/></td>
+              <td><Element name={response ? response.zoukan[0][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[0] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[0][0])}/></td>
+              <td><Element name={response ? response.zoukan[1][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[1] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[1][0])}/></td>
+              <td><Element name={response ? response.zoukan[2][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[2] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[2][0])}/></td>
+              <td><Element name={response ? response.zoukan[3][0] : "･"} tsuhen={response ? response.junshi.zoukan_yoki[3] : ""} onClick={()=>setShowWikiModel(true,response.zoukan[3][0])}/></td>
               <th>余気</th>
             </tr>
             <tr> {/* 十二運星 */}
@@ -307,6 +371,9 @@ export default function Debug() {
       </table>
       <br/>
       <YoujinTable response={response} width={tableWidth} titleColWidth={titleColWidth}/>
+      <br/>
+      {/* 大運線 */}
+      <DaiunTrend response={response} chartWidth={"100%"}/>
       <br/>
       {/* 大運表 */}
       <DaiunTable width={tableWidth} response={response} step={daiun_step}/>

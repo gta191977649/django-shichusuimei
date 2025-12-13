@@ -56,7 +56,20 @@ INSTALLED_APPS = [
     'rest_framework',
     "corsheaders",
     'suimei',
+    'ckeditor',
+    'prettyjson',
 ]
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",  # dev
+        "LOCATION": "unique-bunseki-cache",
+        # For production, use Redis:
+        # "BACKEND": "django_redis.cache.RedisCache",
+        # "LOCATION": "redis://127.0.0.1:6379/1",
+        # "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+    }
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -153,3 +166,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWS_CREDENTIALS = True
+
+# DEEPSEEK API
+
+DEEPSEEK_API_KEY = "sk-ecff03e8f0894a48a0b8f19c073a8a36"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-reasoner"

@@ -43,6 +43,9 @@ th {
   background-color: #CCFFCC;
   font-weight: bold;
 }
+.tb-box {
+  border: 1px solid;
+}
 .td-buttom {
   /* background-color: #FFCC99; */
   background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #ffffff), color-stop(100%, #EEEBDE));
@@ -109,6 +112,9 @@ summary:focus {
   outline-style: none;
 }
 
+.text-element span:hover {
+  cursor: pointer;
+}
 
 
 ruby {
@@ -230,3 +236,20 @@ rb, rt {
   border-color: #000;
 }
 
+
+.modal{
+    display: block !important; /* I added this to see the modal, you don't need this */
+}
+
+/* Important part */
+.modal-dialog{
+    overflow-y: initial !important
+}
+.modal-body{
+    height: 80vh;
+    overflow-y: auto;
+}
+.wikibody { 
+  writing-mode: "vertical-lr";
+  overflow: "auto";
+}
