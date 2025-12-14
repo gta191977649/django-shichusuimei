@@ -9,8 +9,8 @@ from django.utils.text import Truncator
 
 # Register your models here.
 class BunsekiAdmin(admin.ModelAdmin):
-    # show id, meishiki_id, and 50-char previews
-    list_display = ( "meishiki_id_display", "content_preview", "reason_preview")
+    # show id, meishiki_id, previews, and timestamp
+    list_display = ("meishiki_id_display", "content_preview", "reason_preview", "created_at_display")
 
     # enable pretty JSON editor for `content`
     # formfield_overrides = {
@@ -41,6 +41,11 @@ class BunsekiAdmin(admin.ModelAdmin):
         if val is None:
             val = ""
         return Truncator(str(val)).chars(50, html=False)
+
+    @admin.display(description="created at")
+    def created_at_display(self, obj: Bunseki):
+        # show timestamp without seconds fraction for readability
+        return obj.created_at.strftime("%Y-%m-%d %H:%M:%S")
 
 class WikiAdmin(admin.ModelAdmin):
     formfield_overrides = {

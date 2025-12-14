@@ -31,7 +31,14 @@ class BunsekiView(APIView):
         # 0) return cached if exists
         existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
         if existing:
-            return Response({"content": existing.content, "reason": getattr(existing, "reason", "")}, status=status.HTTP_200_OK)
+            return Response(
+                {
+                    "content": existing.content,
+                    "reason": getattr(existing, "reason", ""),
+                    "created_at": existing.created_at.isoformat(),
+                },
+                status=status.HTTP_200_OK,
+            )
 
         # ---- concurrency guard (no parallel DeepSeek calls per meishiki_id) ----
         lock_key = f"bunseki:lock:{meishiki_id}"
@@ -90,7 +97,10 @@ class BunsekiView(APIView):
 
             # Save + return
             obj = Bunseki.objects.create(meishiki_id=meishiki_id, content=content, reason=reason)
-            return Response({"content": obj.content, "reason": obj.reason}, status=status.HTTP_201_CREATED)
+            return Response(
+                {"content": obj.content, "reason": obj.reason, "created_at": obj.created_at.isoformat()},
+                status=status.HTTP_201_CREATED,
+            )
 
         finally:
             # release lock
@@ -160,4 +170,3 @@ class CreateUserView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AllowAny]
-
