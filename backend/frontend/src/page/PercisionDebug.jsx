@@ -7,6 +7,7 @@ import BasicMeishikiTest from "./subpage/BasicMeishikiTest";
 import ReactMarkdown from "react-markdown";
 import { motion } from "motion/react";
 import "./PercisionDebug.css";
+import GoukaAnlysis from "../components/GoukaAnlysis";
 
 const KANA_GROUPS = ["あ", "か", "さ", "た", "な", "は", "ま", "や", "ら", "わ"];
 
@@ -423,8 +424,9 @@ export default function PercisionDebug({ profile, setSelectedProfile }) {
                 </div>
               </Tab>
               <Tab eventKey="contact" title="細盤分析">
-                <div className="pd-panel-body pd-tab-body">
-                  <BasicMeishikiTest />
+                <div className="pd-panel-body pd-tab-body xipan">
+                  {/* <BasicMeishikiTest /> */}
+                  <GoukaAnlysis tableWidth={"100%"} response={response} />
                 </div>
               </Tab>
               </Tabs>
