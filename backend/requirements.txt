@@ -3,6 +3,9 @@ Django
 django-cors-headers
 djangorestframework
 djangorestframework-simplejwt
+django-ckeditor
+django-prettyjson
+openai
 PyJWT
 pytz
 sqlparse
@@ -10,4 +13,3 @@ psycopg2-binary
 python-dotenv
 cnlunar
 numpy
-django-prettyjson
