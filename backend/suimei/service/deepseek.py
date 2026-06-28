@@ -5,7 +5,7 @@ import json
 import re
 from typing import Any, List
 from django.conf import settings
-from openai import OpenAI
+from openai import APIConnectionError, AuthenticationError, OpenAI, RateLimitError
 
 DEEPSEEK_BASE_URL = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = getattr(settings, "DEEPSEEK_MODEL", "deepseek-reasoner")
@@ -18,7 +18,9 @@ class DeepseekError(RuntimeError):
 def _client() -> OpenAI:
     key = getattr(settings, "DEEPSEEK_API_KEY", None)
     if not key:
-        raise DeepseekError("DEEPSEEK_API_KEY is not configured in settings.py")
+        raise DeepseekError(
+            "DEEPSEEK_API_KEY is not configured. Set it in backend/.env before using /api/gpt."
+        )
     return OpenAI(api_key=key, base_url=DEEPSEEK_BASE_URL)
 
 
@@ -129,6 +131,14 @@ def analyze_bazi(messages: List[dict], stream_debug: bool = False):
             "reason": full_reasoning,
         }
 
+    except AuthenticationError:
+        raise DeepseekError(
+            "DeepSeek authentication failed. Please set a valid DEEPSEEK_API_KEY in backend/.env."
+        )
+    except RateLimitError as e:
+        raise DeepseekError(f"DeepSeek rate limit exceeded: {e}")
+    except APIConnectionError as e:
+        raise DeepseekError(f"DeepSeek connection failed: {e}")
     except KeyboardInterrupt:
         print("\n\n⛔️ Streaming interrupted by user.")
         raise

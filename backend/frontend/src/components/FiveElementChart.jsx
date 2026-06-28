@@ -6,18 +6,19 @@ import { getFiveElementEnergy } from '../common';
 // Registering Radar chart components with Chart.js
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
-const FiveElementChart = ({ response }) => {
+const FiveElementChart = ({ response, elementEnergy = null, label = '五行エネルギー' }) => {
+  const energyPayload = elementEnergy || response.element_energy;
   const radarData = {
-    labels: [`木:${response.element_energy.relation["木"]}`, `火:${response.element_energy.relation["火"]}`, `土:${response.element_energy.relation["土"]}`, `金:${response.element_energy.relation["金"]}`, `水:${response.element_energy.relation["水"]}`], 
+    labels: [`木:${energyPayload.relation["木"]}`, `火:${energyPayload.relation["火"]}`, `土:${energyPayload.relation["土"]}`, `金:${energyPayload.relation["金"]}`, `水:${energyPayload.relation["水"]}`], 
       datasets: [
         {
-          label: '五行エネルギー', // [ Element Names ]
+          label, // [ Element Names ]
           data: [
-            getFiveElementEnergy(response, '木'),
-            getFiveElementEnergy(response, '火'),
-            getFiveElementEnergy(response, '土'),
-            getFiveElementEnergy(response, '金'),
-            getFiveElementEnergy(response, '水'),
+            getFiveElementEnergy(response, '木', energyPayload),
+            getFiveElementEnergy(response, '火', energyPayload),
+            getFiveElementEnergy(response, '土', energyPayload),
+            getFiveElementEnergy(response, '金', energyPayload),
+            getFiveElementEnergy(response, '水', energyPayload),
           ],
           backgroundColor: 'rgba(204, 255, 204,0.5)',
           borderColor: 'black',

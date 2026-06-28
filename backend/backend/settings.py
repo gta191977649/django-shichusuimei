@@ -14,7 +14,9 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import os
-load_dotenv()
+
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(ENV_FILE)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -169,6 +171,6 @@ CORS_ALLOWS_CREDENTIALS = True
 
 # DEEPSEEK API
 
-DEEPSEEK_API_KEY = "sk-ecff03e8f0894a48a0b8f19c073a8a36"
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-DEEPSEEK_MODEL = "deepseek-reasoner"
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-reasoner")

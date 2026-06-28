@@ -3,20 +3,9 @@ from .model.meishiki import Meishiki
 from .model.bunseki import Bunseki
 from .serializers import MeishikiSerializer,BunsekiSerializer
 from .serializers import WikiSearchSerializer
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
-
-
-class BunsekiViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Bunseki.objects.all()
-    serializer_class = BunsekiSerializer
-
-class MeishikiViewSet(viewsets.ModelViewSet):
-    permission_classes = [AllowAny]
-    queryset = Meishiki.objects.all()
-    serializer_class = MeishikiSerializer
 
 
 class WikiViewSet(viewsets.ViewSet):
@@ -30,13 +19,30 @@ class WikiViewSet(viewsets.ViewSet):
 
 
 class MeishikiViewSet(viewsets.ModelViewSet):
-    queryset = Meishiki.objects.all()
     serializer_class = MeishikiSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return Meishiki.objects.all().order_by("-id")
+        return Meishiki.objects.filter(owner=self.request.user).order_by("-id")
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class BunsekiViewSet(viewsets.ModelViewSet):
+    serializer_class = BunsekiSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if self.request.user.is_staff or self.request.user.is_superuser:
+            return Bunseki.objects.all().order_by("-id")
+        return Bunseki.objects.filter(meishiki__owner=self.request.user).order_by("-id")
 
 
 class AIViewSet(viewsets.ViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
     @action(detail=False, methods=['get'])
     def query(self, request):
         test_resp = [

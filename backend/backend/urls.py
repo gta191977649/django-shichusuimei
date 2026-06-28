@@ -9,8 +9,8 @@ from rest_framework.routers import DefaultRouter
 from suimei.data_api import MeishikiViewSet, WikiViewSet, AIViewSet, BunsekiViewSet
 
 router = DefaultRouter()
-router.register(r'meishiki', MeishikiViewSet)
-router.register(r'bunseki', BunsekiViewSet)
+router.register(r'meishiki', MeishikiViewSet, basename='meishiki')
+router.register(r'bunseki', BunsekiViewSet, basename='bunseki')
 router.register(r'wiki', WikiViewSet, basename='wiki')
 router.register(r'ai', AIViewSet, basename='ai')
 

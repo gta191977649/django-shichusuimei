@@ -7,6 +7,7 @@ from suimei.model.daiun import *
 def trans(M):
     return [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]
 class Meishi:
+    SHIN_TYPE_RATIO_THRESHOLD = 0.05
     # 天干
     kan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', ]
     # 地支
@@ -432,7 +433,7 @@ class Meishi:
     def getFiveElementTushenRelation(self):
         higen_element = Meishi.gogyo[Meishi.gogyo_kan[Meishi.kan.index(self.higen)]]
         relation = self.gogyo_seikei[higen_element]
-        key_mapping = {'自星': '比劫', '印星': '正印', '泄星': '食傷', '官星': '官殺', '財星': '財才'}
+        key_mapping = {'自星': '比劫', '印星': '印綬', '泄星': '食傷', '官星': '官殺', '財星': '財才'}
 
         # Create the relation dictionary with the new keys
         relation = {key_mapping[k]: v for k, v in relation.items()}
@@ -441,53 +442,221 @@ class Meishi:
         reversed_relation = {v: k for k, v in relation.items()}
         return reversed_relation
 
-    # 五行エネルギー計算
-    def computeFiveElementEnergy(self):
+    def _build_five_element_energy(self):
         energy = {
-            "木":0.0,
-            "火":0.0,
-            "土":0.0,
-            "金":0.0,
-            "水":0.0,
+            "木": 0.0,
+            "火": 0.0,
+            "土": 0.0,
+            "金": 0.0,
+            "水": 0.0,
         }
-        # 月令
-        tsukiren = self.meisiki["shi"][1]["element"]
-        #tsukirenKeisei = self.getElementsEnergyMonthConstant(tsukiren,"木")
-        # 天干計算
-        for kan in self.meisiki["kan"]:
-            element = kan["element"]
-            element_type = self.get_kan_element_type(element)
-            energy[element_type] += 100 #天干は１００点
+        tsukiren = self.chishi[1]
 
-        # 地支計算
-        for shi in self.meisiki["shi"]:
-            element = shi["element"]
-            for zoukan in Meishi.ZoukanPointTable[element]:
-                zoukan_name = zoukan
+        for kan in self.tenkan:
+            element_type = self.get_kan_element_type(kan)
+            energy[element_type] += 100
+
+        for shi in self.chishi:
+            for zoukan_name, zoukan_strength in Meishi.ZoukanPointTable[shi].items():
                 zoukan_type = self.get_kan_element_type(zoukan_name)
-                zoukan_strength = Meishi.ZoukanPointTable[element][zoukan]
                 energy[zoukan_type] += zoukan_strength
 
-        #
-        season_energy = {
-            "旺":10,
-            "相":7,
-            "死":2.5,
-            "囚":3,
-            "休":5,
-        }
-        # 月令係数計算
         for element in energy:
-            energy[element] *= self.getElementsEnergyMonthConstant(tsukiren,element)
-        # 月令係数計算 #2
-        # for element in energy:
-        #     energy_char = self.getGogyoEnergyFromMonth(self.tsukirei,element)
-        #     energy_factor = season_energy[energy_char]
-        #     print(energy)
-        #     energy[element] *= energy_factor
+            energy[element] *= self.getElementsEnergyMonthConstant(tsukiren, element)
 
-        #print(energy,tsukiren+"月生")
         return energy
+
+    def _build_shin_type_ratio(self, energy=None, basis="element_energy"):
+        energy = energy or self._build_five_element_energy()
+        relation = self.getFiveElementTushenRelation()
+        total_energy = sum(energy.values())
+        same_relations = {"比劫", "印綬"}
+
+        same_energy = sum(
+            value for element, value in energy.items()
+            if relation[element] in same_relations
+        )
+        different_energy = total_energy - same_energy
+
+        same_ratio = (same_energy / total_energy) if total_energy else 0.0
+        different_ratio = (different_energy / total_energy) if total_energy else 0.0
+
+        return {
+            "same_ratio": same_ratio,
+            "different_ratio": different_ratio,
+            "delta": same_ratio - different_ratio,
+            "basis": basis,
+        }
+
+    def _determine_shin_type_from_ratio(self, ratio):
+        delta = ratio["delta"]
+        threshold = self.SHIN_TYPE_RATIO_THRESHOLD
+
+        if delta > threshold:
+            return "身旺"
+        if delta < -threshold:
+            return "身弱"
+        return "中和"
+
+    def _symbol_to_element_type(self, symbol):
+        if symbol in Meishi.kan:
+            return self.get_kan_element_type(symbol)
+        if symbol in Meishi.shi:
+            return self.get_shi_element_type(symbol)
+        if symbol in Meishi.gogyo:
+            return symbol
+        return None
+
+    def _single_target_element(self, target):
+        if not target or "/" in str(target):
+            return None
+        return target if target in Meishi.gogyo else None
+
+    def _build_gouka_adjusted_element_energy(self, base_energy=None, gouka=None):
+        base_energy = base_energy or self._build_five_element_energy()
+        adjusted = {element: float(value) for element, value in base_energy.items()}
+        gouka = gouka or {}
+        resolved = gouka.get("resolved", {})
+        adjustments = []
+
+        state_factor = {
+            "成立": 1.0,
+            "減力": 0.55,
+        }
+        weakening_rate = {
+            "沖": 0.10,
+            "刑": 0.07,
+            "害": 0.05,
+            "破": 0.05,
+            "剋": 0.08,
+        }
+
+        def add_adjustment(item, action, element, delta, note):
+            if abs(delta) < 0.0001:
+                return
+            adjustments.append({
+                "type": item.get("type"),
+                "state": item.get("state"),
+                "element": element,
+                "delta": round(delta, 4),
+                "action": action,
+                "note": note,
+            })
+
+        def score_strength(item):
+            return (float(item.get("score") or 0) / 100.0) * state_factor.get(item.get("state"), 0.0)
+
+        # 裁決後に成立・減力した刑沖破害剋と合絆を、原局エネルギーへ軽く反映する。
+        for item in list(resolved.get("kan", [])) + list(resolved.get("shi", [])):
+            strength = score_strength(item)
+            if strength <= 0:
+                continue
+
+            source_elements = [
+                self._symbol_to_element_type(symbol)
+                for symbol in item.get("element", [])
+            ]
+            source_elements = [element for element in source_elements if element in adjusted]
+            if not source_elements:
+                continue
+
+            kind = item.get("kind")
+            if kind in weakening_rate:
+                rate = weakening_rate[kind] * strength
+                for element in sorted(set(source_elements)):
+                    delta = adjusted[element] * rate
+                    adjusted[element] = max(0.0, adjusted[element] - delta)
+                    add_adjustment(
+                        item,
+                        "減力",
+                        element,
+                        -delta,
+                        f"{item.get('type')} {item.get('state')}により{element}を{rate:.1%}減力",
+                    )
+                continue
+
+            if kind in {"合", "暗合"}:
+                rate = (0.035 if item.get("realm") == "kan" else 0.045) * strength
+                total_bound = 0.0
+                for element in sorted(set(source_elements)):
+                    delta = adjusted[element] * rate
+                    adjusted[element] = max(0.0, adjusted[element] - delta)
+                    total_bound += delta
+                    add_adjustment(
+                        item,
+                        "合絆",
+                        element,
+                        -delta,
+                        f"{item.get('type')} {item.get('state')}により{element}を{rate:.1%}合絆",
+                    )
+
+                target = self._single_target_element(item.get("to"))
+                if target:
+                    gain = total_bound * 0.5
+                    adjusted[target] += gain
+                    add_adjustment(
+                        item,
+                        "合意",
+                        target,
+                        gain,
+                        f"{item.get('type')}は化成未満のため、化神{target}へ軽微補正",
+                    )
+
+        # 化成だけは別枠で、元五行の一部を化神へ移す。
+        transform_items = [
+            item
+            for item in list(resolved.get("effective_kan", [])) + list(resolved.get("effective_shi", []))
+            if item.get("type") in {"干化", "支化"} and item.get("state") == "化成"
+        ]
+        for item in transform_items:
+            target = self._single_target_element(item.get("to"))
+            if not target:
+                continue
+
+            source_elements = [
+                self._symbol_to_element_type(symbol)
+                for symbol in item.get("element", [])
+            ]
+            source_elements = [
+                element for element in source_elements
+                if element in adjusted and element != target
+            ]
+            if not source_elements:
+                continue
+
+            source_type = item.get("source_type")
+            rate = (0.22 if source_type == "干合" else 0.18) * (float(item.get("score") or 0) / 100.0)
+            total_transfer = 0.0
+            for element in sorted(set(source_elements)):
+                delta = adjusted[element] * rate
+                adjusted[element] = max(0.0, adjusted[element] - delta)
+                total_transfer += delta
+                add_adjustment(
+                    item,
+                    "化出",
+                    element,
+                    -delta,
+                    f"{item.get('type')} 化成により{element}から{target}へ{rate:.1%}転化",
+                )
+
+            adjusted[target] += total_transfer
+            add_adjustment(
+                item,
+                "化入",
+                target,
+                total_transfer,
+                f"{item.get('type')} 化成により化神{target}へ転化",
+            )
+
+        return {
+            "energy": adjusted,
+            "adjustments": adjustments,
+            "basis": "gouka_resolved",
+        }
+
+    # 五行エネルギー計算
+    def computeFiveElementEnergy(self):
+        return self._build_five_element_energy()
     def computeElementNumber(self,considerZoukan=False):
         element_count = {
             "木": 0,
@@ -1003,16 +1172,33 @@ class Meishi:
 
         # 合計点数と身旺弱の判定
         total = gogyu_point + tsukirei_point + juniun_point
-        shin_type = determine_shin_type(total)
+        legacy_shin_type = determine_shin_type(total)
+        energy = self._build_five_element_energy()
+        ratio = self._build_shin_type_ratio(energy)
+        relation = self.getFiveElementTushenRelation()
+        same_elements = [element for element, rel in relation.items() if rel in {"比劫", "印綬"}]
+        different_elements = [element for element, rel in relation.items() if rel not in {"比劫", "印綬"}]
+        delta = ratio["delta"]
+        threshold = self.SHIN_TYPE_RATIO_THRESHOLD
+
+        shin_type = self._determine_shin_type_from_ratio(ratio)
 
         note += f"最終結果:\n"
+        note += f"同和五行: {', '.join(same_elements)}\n"
+        note += f"異五行: {', '.join(different_elements)}\n"
+        note += f"同和割合: {ratio['same_ratio']:.2%}\n"
+        note += f"異割合: {ratio['different_ratio']:.2%}\n"
+        note += f"差分(同和-異): {delta:.2%}\n"
+        note += f"中和閾値: ±{threshold:.0%}\n"
+        note += f"判定: 「{shin_type}」\n"
+        note += "\n旧算法参考:\n"
         note += f"月令点: {tsukirei_point}\n"
         note += f"五行点: {gogyu_point}\n"
         note += f"十二運星点: {juniun_point}\n"
         note += f"合計: {total}点\n"
-        note += f"判定: 「{shin_type}」\n"
+        note += f"旧算法判定: 「{legacy_shin_type}」\n"
 
-        return shin_type, tsukirei_point, gogyu_point, juniun_point, note
+        return shin_type, tsukirei_point, gogyu_point, juniun_point, note, ratio
 
 
     def getKanTsuhen(self,kan):
@@ -1117,7 +1303,15 @@ class Meishi:
             unsei = self.getJuniunboshi(self.higen, element)
             self.juniunshi.append(unsei)
 
-        self.shin_type,self.tsukirei_point,self.gogyu_point,self.juniun_point,self.shin_type_note = self.miouChiyakuCheck()
+        (
+            self.shin_type,
+            self.tsukirei_point,
+            self.gogyu_point,
+            self.juniun_point,
+            self.shin_type_note,
+            self.shin_type_ratio,
+        ) = self.miouChiyakuCheck()
+        self.five_element_energy = self._build_five_element_energy()
         self.five_elements_number = self.calculateElementNumber()
         # 空亡
         self.kubou = self.getKuBou(self.higen,self.chishi[2])
@@ -1180,7 +1374,7 @@ class Meishi:
             "水": self.getGogyoEnergyFromMonth(self.tsukirei,"水"),
         }
         self.element_energy = {
-            "energy": self.computeFiveElementEnergy(),
+            "energy": self.five_element_energy,
             "element_number": self.computeElementNumber(considerZoukan=True),
             "relation": self.getFiveElementTushenRelation(),
             "season": self.tsukirei,
@@ -1190,6 +1384,25 @@ class Meishi:
         gk = Gouka(meishiki=self.meisiki)
 
         self.gouka = gk.gouka
+        adjusted_energy_payload = self._build_gouka_adjusted_element_energy(
+            base_energy=self.five_element_energy,
+            gouka=self.gouka,
+        )
+        self.five_element_energy_adjusted = adjusted_energy_payload["energy"]
+        self.shin_type_ratio_adjusted = self._build_shin_type_ratio(
+            self.five_element_energy_adjusted,
+            basis="element_energy_gouka_adjusted",
+        )
+        self.shin_type_adjusted = self._determine_shin_type_from_ratio(self.shin_type_ratio_adjusted)
+        self.element_energy_adjusted = {
+            "energy": self.five_element_energy_adjusted,
+            "element_number": self.element_energy["element_number"],
+            "relation": self.element_energy["relation"],
+            "season": self.element_energy["season"],
+            "season_energy": self.element_energy["season_energy"],
+            "adjustments": adjusted_energy_payload["adjustments"],
+            "basis": adjusted_energy_payload["basis"],
+        }
 
         self.trend = Daiun(self)
 

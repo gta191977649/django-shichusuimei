@@ -20,6 +20,7 @@ class MeishikiSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meishiki
         fields = '__all__'
+        read_only_fields = ["owner"]
 
 class BunsekiSerializer(serializers.ModelSerializer):
     class Meta:

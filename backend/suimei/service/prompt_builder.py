@@ -115,6 +115,87 @@ def format_shishen_analysis(data_dict):
     return output_lines
 
 
+def format_gouka_reference(gouka):
+    if not gouka:
+        return "未检测到刑沖破害、合与化相关信息。"
+
+    raw_kan = gouka.get("kan", [])
+    raw_shi = gouka.get("shi", [])
+    resolved = gouka.get("resolved", {})
+    summary = resolved.get("summary", [])
+
+    def _render(items):
+        return "、".join(
+            f"{item['element'][0]}{item['element'][1]}{item['type']}{f'→{item['to']}' if item.get('to') else ''}"
+            for item in items
+        ) or "无"
+
+    return (
+        f"原始检出[天干]：{_render(raw_kan)}\n"
+        f"原始检出[地支]：{_render(raw_shi)}\n"
+        f"Chart-level裁决：{'；'.join(summary) if summary else '无'}"
+    )
+
+
+def _format_ratio_percent(value):
+    if value is None:
+        return "-"
+    return f"{value * 100:.2f}%"
+
+
+def _format_energy_distribution(element_energy):
+    if not element_energy:
+        return "无"
+
+    energy = element_energy.get("energy", {})
+    relation = element_energy.get("relation", {})
+    total = sum(float(value) for value in energy.values())
+    if not total:
+        return "无"
+
+    parts = []
+    for element in ["木", "火", "土", "金", "水"]:
+        value = float(energy.get(element, 0))
+        ratio = value / total
+        parts.append(f"{element}({relation.get(element, '-')})={_format_ratio_percent(ratio)}")
+
+    return "、".join(parts)
+
+
+def format_shin_type_reference(bazi):
+    ratio = getattr(bazi, "shin_type_ratio", {}) or {}
+    adjusted_ratio = getattr(bazi, "shin_type_ratio_adjusted", {}) or {}
+    adjusted_type = getattr(bazi, "shin_type_adjusted", None)
+    adjusted_energy = getattr(bazi, "element_energy_adjusted", None)
+
+    lines = [
+        (
+            f"原局判定：{getattr(bazi, 'shin_type', '-')}"
+            f"（判定基準=同行割合、同行={_format_ratio_percent(ratio.get('same_ratio'))}、"
+            f"異行={_format_ratio_percent(ratio.get('different_ratio'))}、"
+            f"差分={_format_ratio_percent(ratio.get('delta'))}、中和帯=±5%）"
+        ),
+        f"原局五行能量：{_format_energy_distribution(getattr(bazi, 'element_energy', None))}",
+    ]
+
+    if adjusted_ratio:
+        adjustments = adjusted_energy.get("adjustments", []) if adjusted_energy else []
+        lines.extend([
+            (
+                f"制化裁決補正後参考：{adjusted_type or '-'}"
+                f"（同行={_format_ratio_percent(adjusted_ratio.get('same_ratio'))}、"
+                f"異行={_format_ratio_percent(adjusted_ratio.get('different_ratio'))}、"
+                f"差分={_format_ratio_percent(adjusted_ratio.get('delta'))}）"
+            ),
+            f"補正後五行能量：{_format_energy_distribution(adjusted_energy)}",
+            f"補正根拠：刑・沖・破・害・合化の裁決結果を反映。補正件数={len(adjustments)}",
+        ])
+    else:
+        lines.append("制化裁決補正後参考：无")
+
+    return "\n".join(lines)
+
+
 def build_prompt_from_meishiki(bazi) -> str:
     """
     Build the exact 'bazi' string that DeepSeek should receive,
@@ -169,6 +250,16 @@ def build_prompt_from_meishiki(bazi) -> str:
     )
 
     # 十神提示
+
+    reference_prompt += (
+        "[刑沖破害・合化裁決]：{}\n"
+        .format(format_gouka_reference(getattr(bazi, "gouka", {})))
+    )
+
+    reference_prompt += (
+        "[日主旺衰判定]：{}\n"
+        .format(format_shin_type_reference(bazi))
+    )
 
     shishen_output = format_shishen_analysis(bazi.shishen_anlysis)
 
@@ -267,6 +358,14 @@ def build_prompt_from_meishiki(bazi) -> str:
         # "[大运]： 年干丁火（阴干）故走逆行运：辛丑，庚子，己亥，戊戌，丁酉，丙申，乙末，甲午，癸巳。 起运时间：出身后1年0个月。 当前大运：己亥。"
         #  },
         {"role": "system", "content": reference_prompt},
+        {
+            "role": "system",
+            "content": "请优先参考[刑沖破害・合化裁決]。不得把所有“合”直接当作“化”，必须区分原始检出与裁决后的成立、减力、失效、化成。",
+        },
+        {
+            "role": "system",
+            "content": "分析日主旺衰、格局定位、喜忌与病药时，必须优先参考[日主旺衰判定]中的原局判定、同行/異行比例与制化裁決補正後参考；若自行修正结论，必须说明命理理由。",
+        },
 
         {"role": "user", "content": user_prompt},
 

@@ -1,8 +1,5 @@
 from django.shortcuts import render
 from django.shortcuts import render
-from django.contrib.auth.models import User
-from rest_framework import generics
-from .serializers import UserSerializer
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework import status
@@ -19,14 +16,17 @@ LOCK_TTL_SEC = 15 * 60  # lock for 15min (long-running)
 
 
 class BunsekiView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         meishiki_id = request.query_params.get("meishiki_id")
         if not meishiki_id:
             return Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        meishiki = get_object_or_404(Meishiki, pk=meishiki_id)
+        meishiki_queryset = Meishiki.objects.all()
+        if not (request.user.is_staff or request.user.is_superuser):
+            meishiki_queryset = meishiki_queryset.filter(owner=request.user)
+        meishiki = get_object_or_404(meishiki_queryset, pk=meishiki_id)
 
         # 0) return cached if exists
         existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
@@ -39,6 +39,10 @@ class BunsekiView(APIView):
                 },
                 status=status.HTTP_200_OK,
             )
+
+        existing_only = str(request.query_params.get("existing_only", "")).lower() in ["1", "true", "yes"]
+        if existing_only:
+            return Response({"detail": "Bunseki not found."}, status=status.HTTP_404_NOT_FOUND)
 
         # ---- concurrency guard (no parallel DeepSeek calls per meishiki_id) ----
         lock_key = f"bunseki:lock:{meishiki_id}"
@@ -91,7 +95,7 @@ class BunsekiView(APIView):
                 content = result.get("payload", [])
                 reason = result.get("reason", "")
             except DeepseekError as e:
-                return Response({"detail": str(e)}, status=status.HTTP_502_BAD_GATEWAY)
+                return Response({"detail": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             except Exception as e:
                 return Response({"detail": f"AI error: {e}"}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -145,9 +149,19 @@ class SuimeiView(APIView):
             "juniunshi":meishi.juniunshi,
             "zoukan":meishi.zoukan,
             "shi_type": meishi.shin_type,
+            "shi_type_ratio": meishi.shin_type_ratio,
+            "shi_type_adjusted": meishi.shin_type_adjusted,
+            "shi_type_ratio_adjusted": meishi.shin_type_ratio_adjusted,
             "tsukirei_point":meishi.tsukirei_point,
             "gogyu_point":meishi.gogyu_point,
             "juniun_point":meishi.juniun_point,
+            "shi_type_score_legacy": {
+                "tsukirei_point": meishi.tsukirei_point,
+                "gogyu_point": meishi.gogyu_point,
+                "juniun_point": meishi.juniun_point,
+                "total": meishi.tsukirei_point + meishi.gogyu_point + meishi.juniun_point,
+                "basis": "legacy_score",
+            },
             "shi_type_note":meishi.shin_type_note,
             "ritsun_time": meishi.ritsun,
             "younjin": meishi.younjin,
@@ -157,6 +171,7 @@ class SuimeiView(APIView):
                 "year_table":meishi.yearList,
             },
             "element_energy":meishi.element_energy,
+            "element_energy_adjusted":meishi.element_energy_adjusted,
             "gouka":meishi.gouka,
             "trend": {
                 "daiun":meishi.trend.daiun,
@@ -166,7 +181,11 @@ class SuimeiView(APIView):
         print(meishi.daiunList)
 
         return Response(data, status=status.HTTP_200_OK)
-class CreateUserView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+class CreateUserView(APIView):
     permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        return Response(
+            {"detail": "User registration is temporarily disabled."},
+            status=status.HTTP_403_FORBIDDEN,
+        )

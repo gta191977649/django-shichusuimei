@@ -193,6 +193,19 @@ rb, rt {
   .header-debug {
     display: none;
   }
+
+  .gouka-subgrid {
+    grid-template-columns: 1fr;
+  }
+
+  .gouka-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .gouka-graph-toolbar {
+    justify-content: flex-start;
+  }
 }
 .meishiki-tab {
   border-bottom: none;
@@ -234,6 +247,319 @@ rb, rt {
   border-radius: 100%;
   background-color: white;
   border-color: #000;
+}
+
+.gouka-element-active {
+  border-color: #e64841;
+  box-shadow: 0 0 0 2px #ffd6d1;
+  color: #b42318;
+}
+
+.gouka-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gouka-section {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 12px;
+}
+
+.gouka-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.gouka-graph-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.gouka-section-title {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.gouka-toggle-button {
+  border: 1px solid #000;
+  padding: 6px 12px;
+  font-weight: 700;
+  color: #000;
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.gouka-toggle-button:hover {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #dfd9c1 100%);
+}
+
+.gouka-section-subtitle {
+  margin-top: 4px;
+  margin-bottom: 12px;
+}
+
+.gouka-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.gouka-subtitle {
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.gouka-chip-list,
+.gouka-judge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gouka-chip-card,
+.gouka-judge-card,
+.gouka-summary-list,
+.gouka-empty {
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.gouka-chip-card,
+.gouka-judge-card,
+.gouka-empty {
+  padding: 10px 12px;
+}
+
+.gouka-chip-title,
+.gouka-judge-title {
+  font-weight: 700;
+}
+
+.gouka-judge-card {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.gouka-judge-card:hover {
+  border-color: #777;
+  background: #f2f2f2;
+  box-shadow: inset 0 0 0 1px #d0d0d0;
+}
+
+.gouka-judge-card-active,
+.gouka-judge-card-active:hover {
+  border-color: #e64841;
+  background: #fff8e8;
+  box-shadow: inset 0 0 0 1px #ffd6d1;
+}
+
+.gouka-chip-meta,
+.gouka-judge-meta,
+.gouka-judge-line {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.gouka-judge-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.gouka-judge-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.gouka-badge {
+  display: inline-block;
+  border: 1px solid #000;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #eeebde;
+}
+
+.gouka-badge-成立,
+.gouka-badge-化成 {
+  background: #ccffcc;
+}
+
+.gouka-badge-減力,
+.gouka-badge-有化意 {
+  background: #ffff99;
+}
+
+.gouka-badge-失效,
+.gouka-badge-不化,
+.gouka-badge-不适用 {
+  background: #ffd6d1;
+}
+
+.login-page {
+  min-height: calc(100vh - 30px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  background: #fff;
+}
+
+.login-card {
+  width: min(100%, 360px);
+  border: 1px solid #000;
+  padding: 18px;
+  background: #fff;
+}
+
+.login-title {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 4px 12px;
+  border: 1px solid #000;
+  background: #ccffcc;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.login-label {
+  display: block;
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.login-input {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid #000;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.login-message {
+  margin-bottom: 12px;
+  border: 1px solid #000;
+  padding: 8px 10px;
+  background: #ffff99;
+}
+
+.login-button,
+.login-switch,
+.profile-actions button,
+.profile-sidebar-close,
+.profile-editor-toggle,
+.profile-list-item {
+  border: 1px solid #000;
+  padding: 8px 10px;
+  font-weight: 700;
+  color: #000;
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.login-button,
+.login-switch {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.login-switch {
+  background: #fff;
+}
+
+.profile-sidebar {
+  color: #000;
+}
+
+.profile-sidebar-close {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.profile-sidebar-title {
+  display: inline-block;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  border: 1px solid #000;
+  background: #ccffcc;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profile-editor-toggle {
+  width: 100%;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.profile-sidebar-message {
+  margin-bottom: 10px;
+  border: 1px solid #000;
+  padding: 8px;
+  background: #ffff99;
+}
+
+.profile-editor {
+  border: 1px solid #000;
+  padding: 10px;
+  background: #fff;
+}
+
+.profile-editor label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.profile-input {
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid #000;
+  padding: 6px 8px;
+  background: #fff;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.profile-list-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.profile-list-item-active {
+  background: #ccffcc;
+}
+
+.gouka-reason-list,
+.gouka-summary-list {
+  margin: 8px 0 0;
+  padding: 10px 12px 10px 28px;
+}
+
+.gouka-transform-reasons {
+  background: #f7f4ea;
 }
 
 

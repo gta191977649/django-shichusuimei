@@ -7,8 +7,10 @@ import Home from "./page/Home"
 import Calendar from "./page/Calendar"
 import PercisionDebug from './page/PercisionDebug'
 import Suimei from './page/Suimei'
+import Login from './page/Login'
 
 import Sidebar from './components/Sidebar'
+import { ACCESS_TOKEN, REFRESH_TOKEN } from './api'
 
 // Define a constant for the header height
 const HEADER_HEIGHT = '30px'
@@ -16,7 +18,10 @@ const HEADER_HEIGHT = '30px'
 function App() {
   // Side bar related function
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const sidebarWidth = sidebarVisible ? '150px' : '0px';
+  const sidebarWidth = sidebarVisible ? '280px' : '0px';
+  const [authUser, setAuthUser] = useState(() => {
+    return localStorage.getItem(ACCESS_TOKEN) ? { username: 'ログイン中' } : null;
+  });
 
   // !! important !!: global select meishiki profile data
   const [meishiki,setSelectedProfile] = useState(false)
@@ -25,6 +30,16 @@ function App() {
   useEffect(()=> {
     console.log(meishiki)
   },[meishiki])
+
+  const isAuthenticated = Boolean(authUser && localStorage.getItem(ACCESS_TOKEN));
+
+  const handleLogout = () => {
+    localStorage.removeItem(ACCESS_TOKEN);
+    localStorage.removeItem(REFRESH_TOKEN);
+    setAuthUser(null);
+    setSelectedProfile(false);
+    setSidebarVisible(false);
+  };
 
   return (
     <BrowserRouter>
@@ -43,18 +58,26 @@ function App() {
         }}
       >
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', width: '100%' }}>
-          <li>
-            <a onClick={()=>{setSidebarVisible(!sidebarVisible)}}>「檔案」</a>
-          </li>
+          {isAuthenticated ? (
+            <li>
+              <a onClick={()=>{setSidebarVisible(!sidebarVisible)}}>「檔案」</a>
+            </li>
+          ) : null}
           <li>
             <Link to="/">「通常版」</Link>
           </li>
           <li>
             <Link to="/v2">「精密版」</Link>
           </li>
-          <li>
-            「ログイン」
-          </li>
+          {isAuthenticated ? (
+            <li>
+              <a onClick={handleLogout}>「ログアウト」</a>
+            </li>
+          ) : (
+            <li>
+              <Link to="/login">「ログイン」</Link>
+            </li>
+          )}
           <li>
             「使い方❓」
           </li>
@@ -88,7 +111,13 @@ function App() {
             display: sidebarVisible ? 'block' : 'none'
           }}
         >
-          <Sidebar isVisible={sidebarVisible} onToggle={() => setSidebarVisible(!sidebarVisible)} setSelectedProfile={setSelectedProfile}/>
+          {isAuthenticated ? (
+            <Sidebar
+              isVisible={sidebarVisible}
+              onToggle={() => setSidebarVisible(!sidebarVisible)}
+              setSelectedProfile={setSelectedProfile}
+            />
+          ) : null}
         </div>
 
         {/* Main content, shifted to the right by sidebar width */}
@@ -103,8 +132,9 @@ function App() {
         >
           <Routes>
             <Route path="/home" element={<Suimei />} />
-            <Route path="/" element={<Debug />} />
-            <Route path="/v2" element={<PercisionDebug profile={meishiki} setSelectedProfile={setSelectedProfile}/>} />
+            <Route path="/login" element={<Login onLogin={setAuthUser} />} />
+            <Route path="/" element={<Debug profile={meishiki} />} />
+            <Route path="/v2" element={<PercisionDebug profile={meishiki} setSelectedProfile={setSelectedProfile} isAuthenticated={isAuthenticated}/>} />
             <Route path="/app" element={<Calendar />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
