@@ -1,7 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Element from './Element';
 
 const PILLAR_NAMES = ['年柱', '月柱', '日柱', '時柱'];
+const UNKNOWN_PILLAR_TEXT = '不明';
+const PLACEHOLDER_VALUES = new Set(['', null, undefined, false, '・', '･', UNKNOWN_PILLAR_TEXT]);
+const VALID_STEMS = new Set(['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']);
+const VALID_BRANCHES = new Set(['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']);
 const STATE_LABELS = {
   成立: '成立',
   減力: '減力',
@@ -85,6 +89,30 @@ function formatRelation(item) {
   const type = item?.type || '';
   const target = item?.to ? `→${item.to}` : '';
   return `${left}${right} ${type}${target}`.trim();
+}
+
+function isKnownElement(value, realm) {
+  if (PLACEHOLDER_VALUES.has(value)) return false;
+  return realm === 'kan' ? VALID_STEMS.has(value) : VALID_BRANCHES.has(value);
+}
+
+function isRenderableRelation(item, realm, birthTimeUnknown) {
+  const indexes = Array.isArray(item?.index) ? item.index : [];
+  const elements = Array.isArray(item?.element) ? item.element : [];
+  if (indexes.length < 2 || elements.length < 2) return false;
+  if (birthTimeUnknown && indexes.includes(3)) return false;
+  return elements.every((element) => isKnownElement(element, realm));
+}
+
+function filterRelations(items, realm, birthTimeUnknown) {
+  if (!Array.isArray(items)) return [];
+  return items.filter((item) => isRenderableRelation(item, realm, birthTimeUnknown));
+}
+
+function filterSummary(items, birthTimeUnknown) {
+  if (!Array.isArray(items)) return [];
+  if (!birthTimeUnknown) return items;
+  return items.filter((item) => !String(item).includes('時柱') && !String(item).includes('时柱'));
 }
 
 function SimpleList({ items, emptyText }) {
@@ -177,7 +205,27 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
   const [selectedRelationKey, setSelectedRelationKey] = useState(null);
 
   const gouka = response?.gouka || {};
-  const resolved = gouka.resolved || {};
+  const birthTimeUnknown = Boolean(response?.birth_time_unknown || response?.birthTimeUnknown);
+  const filteredGouka = useMemo(() => {
+    const sourceResolved = gouka.resolved || {};
+    const kan = filterRelations(gouka.kan, 'kan', birthTimeUnknown);
+    const shi = filterRelations(gouka.shi, 'shi', birthTimeUnknown);
+
+    return {
+      ...gouka,
+      kan,
+      shi,
+      resolved: {
+        ...sourceResolved,
+        kan: filterRelations(sourceResolved.kan, 'kan', birthTimeUnknown),
+        shi: filterRelations(sourceResolved.shi, 'shi', birthTimeUnknown),
+        effective_kan: filterRelations(sourceResolved.effective_kan, 'kan', birthTimeUnknown),
+        effective_shi: filterRelations(sourceResolved.effective_shi, 'shi', birthTimeUnknown),
+        summary: filterSummary(sourceResolved.summary, birthTimeUnknown),
+      },
+    };
+  }, [birthTimeUnknown, gouka]);
+  const resolved = filteredGouka.resolved || {};
   const activeRelationKey = selectedRelationKey;
 
   const recomputeLayout = useCallback(() => {
@@ -223,15 +271,15 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
       });
     };
 
-    if (gouka.kan) {
-      processData(gouka.kan, 'kan');
+    if (filteredGouka.kan) {
+      processData(filteredGouka.kan, 'kan');
     }
-    if (gouka.shi) {
-      processData(gouka.shi, 'shi');
+    if (filteredGouka.shi) {
+      processData(filteredGouka.shi, 'shi');
     }
 
     setLines(newLines);
-  }, [active, gouka.kan, gouka.shi, response]);
+  }, [active, filteredGouka.kan, filteredGouka.shi, response]);
 
   useEffect(() => {
     if (!active) return;
@@ -308,7 +356,7 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
 
         <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
           <table className="table-gouka" style={{ width: '100%' }}>
-            {renderGoukaRows(gouka.kan, 'kan')}
+            {renderGoukaRows(filteredGouka.kan, 'kan')}
             <tr>
               <td>年柱</td>
               <td>月柱</td>
@@ -343,7 +391,7 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                 <Element name={response ? response.chishi[3] : '･'} tsuhen={response ? response.junshi.zoukan_honki[3] : ''} />
               </td>
             </tr>
-            {renderGoukaRows(gouka.shi, 'shi')}
+            {renderGoukaRows(filteredGouka.shi, 'shi')}
           </table>
 
           <svg

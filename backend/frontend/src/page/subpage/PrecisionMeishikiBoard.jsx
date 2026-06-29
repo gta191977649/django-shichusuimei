@@ -1,12 +1,77 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../../api";
 import Element from "../../components/Element";
 
 const EMPTY_FLOW_ITEMS = { current_index: 0, items: [] };
+const EMPTY_RELATIONS = [];
+const UNKNOWN_PILLAR_TEXT = "不明";
+const VALID_STEMS = new Set(["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]);
+const VALID_BRANCHES = new Set(["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]);
+const KAN_RELATION_TABLES = [
+  { type: "干合", pairs: [["甲", "己", "土"], ["乙", "庚", "金"], ["丙", "辛", "水"], ["丁", "壬", "木"], ["戊", "癸", "火"]] },
+  { type: "干沖", pairs: [["甲", "庚"], ["乙", "辛"], ["丙", "壬"], ["丁", "癸"]] },
+  { type: "干剋", pairs: [["丙", "庚"], ["丁", "辛"], ["甲", "戊"], ["乙", "己"], ["戊", "壬"], ["己", "癸"]] },
+];
+const SHI_RELATION_TABLES = [
+  { type: "支合", pairs: [["子", "丑", "土"], ["辰", "酉", "金"], ["申", "巳", "水"], ["寅", "亥", "木"], ["午", "未", "火/土"], ["卯", "戌", "火"]] },
+  { type: "暗合", pairs: [["寅", "丑"], ["申", "卯"], ["午", "亥"], ["子", "巳"]] },
+  { type: "支沖", pairs: [["午", "子"], ["未", "丑"], ["申", "寅"], ["酉", "卯"], ["戌", "辰"], ["亥", "巳"]] },
+  { type: "支刑", pairs: [["子", "卯"], ["寅", "巳"], ["巳", "申"], ["申", "寅"], ["丑", "戌"], ["戌", "未"], ["未", "丑"]] },
+  { type: "自刑", pairs: [["辰", "辰"], ["午", "午"], ["酉", "酉"], ["亥", "亥"]] },
+  { type: "支破", pairs: [["酉", "子"], ["辰", "丑"], ["亥", "寅"], ["午", "卯"], ["申", "巳"], ["未", "戌"]] },
+  { type: "支害", pairs: [["酉", "戌"], ["申", "亥"], ["未", "子"], ["午", "丑"], ["巳", "寅"], ["辰", "卯"]] },
+];
 
 const formatDate = (value) => {
   if (!value) return "-";
   return value.replace(/-/g, "/");
+};
+
+const isKnownSymbol = (value, validSet) => Boolean(value && value !== UNKNOWN_PILLAR_TEXT && validSet.has(value));
+
+const pairMatches = (left, right, pair) =>
+  (pair[0] === left && pair[1] === right) || (pair[0] === right && pair[1] === left);
+
+const formatRelationLabel = (relation) => {
+  if (!relation) return "";
+  if (relation.to && relation.type && relation.type.includes("合")) {
+    return `合化${relation.to}`;
+  }
+  return relation.type || "";
+};
+
+const buildRelations = (columns, realm) => {
+  const validSet = realm === "kan" ? VALID_STEMS : VALID_BRANCHES;
+  const tables = realm === "kan" ? KAN_RELATION_TABLES : SHI_RELATION_TABLES;
+  const valueKey = realm === "kan" ? "stem" : "branch";
+  const relations = [];
+
+  columns.forEach((leftColumn, leftIndex) => {
+    const left = leftColumn[valueKey];
+    if (!isKnownSymbol(left, validSet)) return;
+
+    for (let rightIndex = leftIndex + 1; rightIndex < columns.length; rightIndex += 1) {
+      const rightColumn = columns[rightIndex];
+      const right = rightColumn[valueKey];
+      if (!isKnownSymbol(right, validSet)) continue;
+
+      tables.forEach((table) => {
+        const matchedPair = table.pairs.find((pair) => pairMatches(left, right, pair));
+        if (!matchedPair) return;
+        relations.push({
+          key: `${realm}-${leftIndex}-${rightIndex}-${table.type}`,
+          realm,
+          type: table.type,
+          to: matchedPair[2] || "",
+          element: [left, right],
+          index: [leftIndex, rightIndex],
+          labels: [leftColumn.label, rightColumn.label],
+        });
+      });
+    }
+  });
+
+  return relations;
 };
 
 const normalizeSelectionPayload = (source) => ({
@@ -36,16 +101,6 @@ const renderElementRuby = (value, tsuhen = "", className = "") => (
   </div>
 );
 
-const renderTsuhenOnlyRuby = (value, className = "") =>
-  value ? (
-    <ruby className={`text-element pd-tsuhen-only-ruby ${className}`.trim()}>
-      <span>・</span>
-      <rt className="vt">{value}</rt>
-    </ruby>
-  ) : (
-    " "
-  );
-
 const renderZoukanLines = (zoukan = []) => (
   <div className="pd-board-zoukan">
     {[2, 1, 0].map((index) => {
@@ -66,8 +121,8 @@ const renderPillarStack = (stem, branch, tsuhen, branchTsuhen) => (
   </div>
 );
 
-const renderOverviewCell = (content, className = "") => (
-  <div className={`pd-overview-cell ${className}`.trim()}>{content}</div>
+const renderOverviewCell = (content, className = "", style = undefined) => (
+  <div className={`pd-overview-cell ${className}`.trim()} style={style}>{content}</div>
 );
 
 const renderElementOrBlank = (value, tsuhen = "", className = "") =>
@@ -103,8 +158,8 @@ const padFlowItems = (items, targetLength, prefix) => {
 
 export default function PrecisionMeishikiBoard({ data, requestInput }) {
   const precision = data?.precision_chart;
-  const natal = precision?.natal || {};
-  const yearGroups = data?.daiun_table?.year_table || [];
+  const natal = useMemo(() => precision?.natal || {}, [precision?.natal]);
+  const yearGroups = useMemo(() => data?.daiun_table?.year_table || [], [data?.daiun_table?.year_table]);
   const daiunSnapshots = precision?.daiun_snapshots || [];
   const initialSelection = useMemo(() => normalizeSelectionPayload(precision), [precision]);
 
@@ -115,6 +170,10 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
   const [selection, setSelection] = useState(initialSelection);
   const [loadingSelection, setLoadingSelection] = useState(false);
   const flowBoardScrollRefs = useRef({});
+  const overviewGridRef = useRef(null);
+  const [relationSvgSize, setRelationSvgSize] = useState({ width: 0, height: 0 });
+  const [relationLines, setRelationLines] = useState([]);
+  const [expandedRelations, setExpandedRelations] = useState({ kan: false, shi: false });
 
   useEffect(() => {
     const nextSelection = normalizeSelectionPayload(precision);
@@ -221,7 +280,7 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
     data?.ritsun_time?.unjun_type === 0 ? "逆行運" : "順行運"
   }」`;
 
-  const overviewColumns = [
+  const overviewColumns = useMemo(() => [
     {
       key: "flow-day",
       label: "流日",
@@ -326,7 +385,168 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
       kubou: natal?.time?.kubou || "",
       nayin: natal?.time?.nayin || "",
     },
-  ];
+  ], [currentFlowDay, selection?.flowMonth, selection?.flowYear, currentDaiun, data, natal]);
+
+  const { kanRelations, shiRelations } = useMemo(
+    () => ({
+      kanRelations: buildRelations(overviewColumns, "kan"),
+      shiRelations: buildRelations(overviewColumns, "shi"),
+    }),
+    [overviewColumns]
+  );
+  const visibleKanRelations = expandedRelations.kan ? kanRelations : EMPTY_RELATIONS;
+  const visibleShiRelations = expandedRelations.shi ? shiRelations : EMPTY_RELATIONS;
+
+  const recomputeRelationLines = useCallback(() => {
+    const gridNode = overviewGridRef.current;
+    if (!gridNode) {
+      setRelationLines([]);
+      return;
+    }
+
+    const gridRect = gridNode.getBoundingClientRect();
+    if (gridRect.width === 0 || gridRect.height === 0) return;
+
+    setRelationSvgSize({
+      width: gridNode.scrollWidth,
+      height: gridNode.scrollHeight,
+    });
+
+    const nextLines = [];
+    const collectLines = (relations, prefix) => {
+      relations.forEach((relation, index) => {
+        const startEl = gridNode.querySelector(`.pd-relation-${prefix}-${index}-start`);
+        const endEl = gridNode.querySelector(`.pd-relation-${prefix}-${index}-end`);
+        if (!startEl || !endEl) return;
+
+        const startRect = startEl.getBoundingClientRect();
+        const endRect = endEl.getBoundingClientRect();
+        const x1 = startRect.left + startRect.width / 2 - gridRect.left + gridNode.scrollLeft;
+        const y1 = startRect.top + startRect.height / 2 - gridRect.top;
+        const x2 = endRect.left + endRect.width / 2 - gridRect.left + gridNode.scrollLeft;
+        const y2 = endRect.top + endRect.height / 2 - gridRect.top;
+
+        nextLines.push({
+          key: relation.key,
+          type: relation.type,
+          label: formatRelationLabel(relation),
+          x1,
+          y1,
+          x2,
+          y2,
+        });
+      });
+    };
+
+    collectLines(visibleKanRelations, "kan");
+    collectLines(visibleShiRelations, "shi");
+    setRelationLines(nextLines);
+  }, [visibleKanRelations, visibleShiRelations]);
+
+  useEffect(() => {
+    let raf2 = 0;
+    const raf1 = window.requestAnimationFrame(() => {
+      raf2 = window.requestAnimationFrame(recomputeRelationLines);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+    };
+  }, [recomputeRelationLines]);
+
+  useEffect(() => {
+    const gridNode = overviewGridRef.current;
+    if (!gridNode) return undefined;
+
+    const observer = new ResizeObserver(recomputeRelationLines);
+    observer.observe(gridNode);
+    window.addEventListener("resize", recomputeRelationLines);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", recomputeRelationLines);
+    };
+  }, [recomputeRelationLines]);
+
+  const renderRelationOverviewRows = (label, relations, prefix, expanded, onToggle) => {
+    if (!expanded) {
+      return renderOverviewCell(
+        <button
+          type="button"
+          className="pd-relation-toggle pd-relation-toggle-collapsed"
+          onClick={onToggle}
+          aria-expanded={false}
+        >
+          <span>{label}</span>
+          <span className="pd-relation-toggle-arrow">▼</span>
+        </button>,
+        "pd-overview-relation-collapsed",
+        { gridColumn: `span ${overviewColumns.length + 1}` }
+      );
+    }
+
+    const displayRelations = expanded && relations.length
+      ? relations
+      : [{
+          key: `${prefix}-empty`,
+          type: "",
+          element: [],
+          index: [],
+          labels: [],
+          placeholder: true,
+        }];
+
+    return (
+      <>
+        {renderOverviewCell(
+          <button
+            type="button"
+            className="pd-relation-toggle"
+            onClick={onToggle}
+            aria-expanded={expanded}
+          >
+            <span>{label}</span>
+            <span className="pd-relation-toggle-arrow">{expanded ? "▲" : "▼"}</span>
+          </button>,
+          "pd-overview-side pd-overview-relation-side pd-overview-relation-side-merged",
+          { gridRow: `span ${displayRelations.length}` }
+        )}
+        {displayRelations.map((relation, relationIndex) => {
+          const relationCellClass = `pd-overview-relation${relationIndex === displayRelations.length - 1 ? " pd-overview-relation-end" : ""}`;
+          return (
+            <Fragment key={relation.key}>
+              {overviewColumns.map((column, columnIndex) => {
+                if (relation.placeholder) {
+                  return renderOverviewCell(<span className="pd-relation-empty">-</span>, relationCellClass);
+                }
+
+                const [startIndex, endIndex] = relation.index;
+                if (columnIndex !== startIndex && columnIndex !== endIndex) {
+                  return renderOverviewCell(<span className="pd-relation-empty"> </span>, relationCellClass);
+                }
+
+                const markerSide = columnIndex === startIndex ? "start" : "end";
+                const markerElement = columnIndex === startIndex ? relation.element[0] : relation.element[1];
+                const relationLabel = formatRelationLabel(relation);
+                return renderOverviewCell(
+                  <div className="pd-relation-marker-stack">
+                    <span
+                      className={`pd-relation-marker pd-relation-${prefix}-${relationIndex}-${markerSide}`}
+                      title={`${relation.labels[0]} ${relation.element[0]} - ${relation.labels[1]} ${relation.element[1]} ${relationLabel}`}
+                    >
+                      {markerElement}
+                    </span>
+                  </div>,
+                  relationCellClass
+                );
+              })}
+            </Fragment>
+          );
+        })}
+      </>
+    );
+  };
 
   const renderFlowBoard = (boardKey, sectionTitle, topLabel, sideLabel, items, extraClass = "") => (
     <section className={`pd-flow-board ${extraClass}`.trim()}>
@@ -498,46 +718,95 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
     <>
       <section className="pd-grid-panel">
         <div className="pd-overview-scroll">
-          <div
-            className="pd-overview-grid"
-            style={{ gridTemplateColumns: `78px repeat(${overviewColumns.length}, minmax(82px, 1fr))` }}
-          >
-            {renderOverviewCell("-", "pd-overview-head pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(column.label, "pd-overview-head"))}
+          <div className="pd-overview-relation-wrap">
+            <div
+              ref={overviewGridRef}
+              className="pd-overview-grid"
+              style={{ gridTemplateColumns: `78px repeat(${overviewColumns.length}, minmax(82px, 1fr))` }}
+            >
+              {renderOverviewCell("-", "pd-overview-head pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(column.label, "pd-overview-head"))}
 
-            {renderOverviewCell("主星", "pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(renderTopStarText(column.topStar), "pd-overview-star"))}
+              {renderOverviewCell("主星", "pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(renderTopStarText(column.topStar), "pd-overview-star"))}
 
-            {renderOverviewCell("天干", "pd-overview-side")}
-            {overviewColumns.map((column) =>
-              renderOverviewCell(
-                renderElementOrBlank(column.stem, column.topStar, "pd-overview-element-ruby"),
-                "pd-overview-main"
-              )
-            )}
+              {renderRelationOverviewRows(
+                "天干関係",
+                kanRelations,
+                "kan",
+                expandedRelations.kan,
+                () => setExpandedRelations((current) => ({ ...current, kan: !current.kan }))
+              )}
 
-            {renderOverviewCell("地支", "pd-overview-side")}
-            {overviewColumns.map((column) =>
-              renderOverviewCell(
-                renderElementOrBlank(column.branch, column.shi_tsuhen, "pd-overview-element-ruby"),
-                "pd-overview-main"
-              )
-            )}
+              {renderOverviewCell("天干", "pd-overview-side")}
+              {overviewColumns.map((column) =>
+                renderOverviewCell(
+                  renderElementOrBlank(column.stem, column.topStar, "pd-overview-element-ruby"),
+                  "pd-overview-main"
+                )
+              )}
 
-            {renderOverviewCell("蔵干", "pd-overview-side pd-overview-side-top")}
-            {overviewColumns.map((column) => renderOverviewCell(renderZoukanLines(column.zoukan), "pd-overview-zoukan"))}
+              {renderOverviewCell("地支", "pd-overview-side")}
+              {overviewColumns.map((column) =>
+                renderOverviewCell(
+                  renderElementOrBlank(column.branch, column.shi_tsuhen, "pd-overview-element-ruby"),
+                  "pd-overview-main"
+                )
+              )}
 
-            {renderOverviewCell("星運", "pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(column.seiun || " "))}
+              {renderRelationOverviewRows(
+                "地支関係",
+                shiRelations,
+                "shi",
+                expandedRelations.shi,
+                () => setExpandedRelations((current) => ({ ...current, shi: !current.shi }))
+              )}
 
-            {renderOverviewCell("自坐", "pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(column.jizuo || " "))}
+              {renderOverviewCell("蔵干", "pd-overview-side pd-overview-side-top")}
+              {overviewColumns.map((column) => renderOverviewCell(renderZoukanLines(column.zoukan), "pd-overview-zoukan"))}
 
-            {renderOverviewCell("空亡", "pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(column.kubou || " "))}
+              {renderOverviewCell("星運", "pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(column.seiun || " "))}
 
-            {renderOverviewCell("納音", "pd-overview-side")}
-            {overviewColumns.map((column) => renderOverviewCell(column.nayin || " "))}
+              {renderOverviewCell("自坐", "pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(column.jizuo || " "))}
+
+              {renderOverviewCell("空亡", "pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(column.kubou || " "))}
+
+              {renderOverviewCell("納音", "pd-overview-side")}
+              {overviewColumns.map((column) => renderOverviewCell(column.nayin || " "))}
+            </div>
+
+            <svg
+              className="pd-overview-relation-svg"
+              width={relationSvgSize.width}
+              height={relationSvgSize.height}
+              viewBox={`0 0 ${relationSvgSize.width || 1} ${relationSvgSize.height || 1}`}
+              aria-hidden="true"
+            >
+              {relationLines.map((line) => {
+                const midX = (line.x1 + line.x2) / 2;
+                const midY = (line.y1 + line.y2) / 2;
+                const labelWidth = Math.max(36, String(line.label || "").length * 12 + 12);
+                return (
+                  <g key={line.key}>
+                    <line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} className="pd-overview-relation-line" />
+                    <rect
+                      x={midX - labelWidth / 2}
+                      y={midY - 9}
+                      width={labelWidth}
+                      height="18"
+                      rx="4"
+                      className="pd-overview-relation-label-bg"
+                    />
+                    <text x={midX} y={midY} className="pd-overview-relation-label">
+                      {line.label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         </div>
       </section>

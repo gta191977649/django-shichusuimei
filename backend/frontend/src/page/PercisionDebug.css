@@ -300,6 +300,11 @@
   background: #fff;
 }
 
+.pd-overview-relation-wrap {
+  position: relative;
+  min-width: 100%;
+}
+
 .pd-overview-cell {
   min-width: 0;
   border-right: 1px solid #000;
@@ -311,23 +316,6 @@
   font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
     "MS PMincho", serif;
   color: #000;
-}
-
-.pd-overview-grid > .pd-overview-cell:nth-child(-n + 9) {
-  background: #ccffcc;
-}
-
-.pd-overview-grid > .pd-overview-cell:nth-child(9n + 1) {
-  background: #ccffcc;
-}
-
-.pd-overview-grid > .pd-overview-cell:nth-child(9n) {
-  border-right: none;
-}
-
-.pd-overview-grid > .pd-overview-cell:nth-last-child(-n + 8),
-.pd-overview-grid > .pd-overview-cell:last-child {
-  border-bottom: none;
 }
 
 .pd-overview-head,
@@ -365,6 +353,145 @@
 
 .pd-overview-zoukan {
   min-height: 72px;
+}
+
+.pd-overview-relation {
+  position: relative;
+  min-height: 42px;
+  padding: 4px 3px;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  overflow: visible;
+}
+
+.pd-overview-relation-side {
+  font-size: 12px;
+  letter-spacing: 0;
+  border-left: none;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+}
+
+.pd-overview-relation-side-merged {
+  align-self: stretch;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pd-relation-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  writing-mode: inherit;
+  text-orientation: inherit;
+  cursor: pointer;
+}
+
+.pd-relation-toggle-arrow {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.pd-overview-relation-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-right: none;
+  background: #ccffcc;
+}
+
+.pd-relation-toggle-collapsed {
+  width: auto;
+  min-height: 0;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  letter-spacing: 0;
+}
+
+.pd-overview-relation-end {
+  border-bottom: 1px solid #000;
+}
+
+.pd-relation-marker-stack {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 32px;
+}
+
+.pd-relation-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border: 1px solid #111;
+  border-radius: 999px;
+  background: #fff4cf;
+  color: #000;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.pd-relation-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  color: #b8b8b8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pd-overview-relation-svg {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pd-overview-relation-line {
+  stroke: #111;
+  stroke-width: 1.2;
+  stroke-opacity: 0.78;
+}
+
+.pd-overview-relation-label-bg {
+  fill: #fff;
+  stroke: #111;
+  stroke-width: 0.8;
+}
+
+.pd-overview-relation-label {
+  fill: #111;
+  dominant-baseline: central;
+  font-size: 11px;
+  font-weight: 800;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
 }
 
 .pd-top-star-text {
