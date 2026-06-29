@@ -360,7 +360,7 @@ def build_prompt_from_meishiki(bazi) -> str:
         {"role": "system", "content": reference_prompt},
         {
             "role": "system",
-            "content": "请优先参考[刑沖破害・合化裁決]。不得把所有“合”直接当作“化”，必须区分原始检出与裁决后的成立、减力、失效、化成。",
+            "content": "请优先参考[刑沖破害・合化裁決]。不得把所有“合”直接当作“化”，必须区分原始检出与裁决后的成立、減力、失效、化成。",
         },
         {
             "role": "system",

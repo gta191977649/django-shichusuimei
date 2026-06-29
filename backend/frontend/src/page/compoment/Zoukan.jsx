@@ -22,8 +22,9 @@ export default function Zoukan({name,tsuhen}) {
   const color = getElementColor(name);
 
   return (
-    <>
-    <span style={{ color: color}}>{name}</span>({tsuhen})
-    </>
+    <ruby className="tsuhen-ruby">
+      <span style={{ color: color }}>{name}</span>
+      <rt>{tsuhen}</rt>
+    </ruby>
   )
 }

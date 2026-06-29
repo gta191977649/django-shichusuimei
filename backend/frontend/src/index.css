@@ -124,6 +124,22 @@ ruby {
   align-items: flex-end;
 }
 
+.tsuhen-ruby,
+.pd-tsuhen-ruby {
+  display: inline-flex;
+  writing-mode: horizontal-tb;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.tsuhen-ruby rt,
+.pd-tsuhen-ruby rt {
+  min-height: 0;
+  font-size: 0;
+  line-height: 0;
+}
+
 rb, rt {
   padding: 0px;
   margin: 0px;

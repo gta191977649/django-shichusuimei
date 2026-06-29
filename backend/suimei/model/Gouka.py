@@ -318,7 +318,7 @@ class Gouka:
                 penalty = self.conflict_penalties.get(peer["kind"], 8)
                 score -= penalty
                 blocked_by.append(peer["type"])
-                reasons.append(f"受 {peer['type']} 牵制，减 {penalty} 分")
+                reasons.append(f"受 {peer['type']} 牵制，減 {penalty} 分")
             elif candidate["kind"] == "沖" and peer["kind"] in {"合", "暗合"}:
                 score -= 8
                 blocked_by.append(peer["type"])
@@ -326,7 +326,7 @@ class Gouka:
             elif candidate["kind"] in {"刑", "害", "破", "剋"} and peer["kind"] in {"合", "暗合"}:
                 score -= 6
                 blocked_by.append(peer["type"])
-                reasons.append(f"受 {peer['type']} 缓冲，杀伤力减弱")
+                reasons.append(f"受 {peer['type']} 缓冲，杀伤力減弱")
             elif candidate["kind"] in {"合", "暗合"} and peer["kind"] in {"合", "暗合"}:
                 score -= 4
                 blocked_by.append(peer["type"])
@@ -401,7 +401,7 @@ class Gouka:
                 reasons.append(f"受 {peer['type']} 冲开，化力明显下降")
             elif peer["kind"] in {"刑", "害", "破", "剋"}:
                 transform_score -= 10
-                reasons.append(f"受 {peer['type']} 扰动，化力减弱")
+                reasons.append(f"受 {peer['type']} 扰动，化力減弱")
             elif peer["kind"] in {"合", "暗合"}:
                 transform_score -= 6
                 reasons.append(f"出现争合，化神不纯")

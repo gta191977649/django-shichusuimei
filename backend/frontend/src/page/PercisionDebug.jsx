@@ -4,7 +4,7 @@ import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
 import ReactMarkdown from "react-markdown";
 import html2canvas from "html2canvas";
-import BasicMeishiki from "./subpage/BasicMeishiki";
+import PrecisionMeishikiBoard from "./subpage/PrecisionMeishikiBoard";
 import GoukaAnlysis from "../components/GoukaAnlysis";
 import "./PercisionDebug.css";
 
@@ -121,6 +121,11 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
       });
 
       if (aiAutoLoadRequestRef.current !== requestId) return;
+      if (res.status === 204 || !res.data) {
+        setAIResponse(null);
+        setAIStatus(null);
+        return;
+      }
       setAIResponse(res.data);
       setAIStatus(null);
     } catch (err) {
@@ -140,6 +145,8 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
     const requestId = aiAutoLoadRequestRef.current + 1;
     aiAutoLoadRequestRef.current = requestId;
 
+    setResponse(false);
+    setActiveTab("meishiki");
     queryProfile(profile);
     setAIResponse(null);
     setAIStatus(null);
@@ -756,12 +763,22 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
       </div>
     ));
 
+  const renderTsuhenRuby = (value, className = "") =>
+    value ? (
+      <ruby className={`pd-tsuhen-ruby ${className}`.trim()}>
+        <span>{value}</span>
+        <rt aria-hidden="true">&nbsp;</rt>
+      </ruby>
+    ) : (
+      " "
+    );
+
   const renderExportPillarCell = (name, tsuhen = "") => (
     <div className="pd-export-pillar-cell">
       <div className="pd-export-pillar-main" style={{ color: getElementColor(name) }}>
         {name ?? "・"}
       </div>
-      <div className="pd-export-pillar-sub">{tsuhen || " "}</div>
+      <div className="pd-export-pillar-sub">{renderTsuhenRuby(tsuhen)}</div>
     </div>
   );
 
@@ -777,7 +794,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
             <span className="pd-export-zoukan-main" style={{ color: getElementColor(name) }}>
               {name ?? "・"}
             </span>
-            <span className="pd-export-zoukan-sub">{tsuhen ? `（${tsuhen}）` : ""}</span>
+            <span className="pd-export-zoukan-sub">{renderTsuhenRuby(tsuhen)}</span>
           </div>
         );
       })}
@@ -962,7 +979,15 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
             >
               <Tab eventKey="meishiki" title="命式盤">
                 <div className="pd-tab-shell">
-                  <BasicMeishiki data={response} />
+                  <PrecisionMeishikiBoard
+                    key={`${profile?.id ?? "profile"}-${profile?.birthDate ?? ""}-${profile?.gender ?? ""}`}
+                    data={response}
+                    requestInput={{
+                      date: form.date,
+                      time: form.time,
+                      gender: form.gender === "M" ? 1 : 0,
+                    }}
+                  />
                 </div>
               </Tab>
               <Tab eventKey="gouka" title="刑・沖・破・害">

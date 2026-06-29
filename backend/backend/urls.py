@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
-from suimei.views import CreateUserView, SuimeiView, BunsekiView
+from suimei.views import BunsekiView, CreateUserView, PrecisionFlowView, SuimeiView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -30,6 +30,7 @@ urlpatterns = [
 
     # Application-specific API endpoints
     path("api/query", SuimeiView.as_view(), name="query"),
+    path("api/precision-flow", PrecisionFlowView.as_view(), name="precision-flow"),
     path("api/gpt", BunsekiView.as_view(), name="query"),
 
     path('api/', include(router.urls)),

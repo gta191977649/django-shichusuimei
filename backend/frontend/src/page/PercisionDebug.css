@@ -193,6 +193,462 @@
   margin-bottom: 0;
 }
 
+.pd-meishiki-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pd-meishiki-current {
+  border: 1px solid #000;
+  padding: 3px 8px;
+  font-weight: 700;
+  background: linear-gradient(to bottom, #ffffff, #EEEBDE);
+  font-size: 12px;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-meishiki-today {
+  min-width: 84px;
+  align-self: center;
+}
+
+.pd-meishiki-date-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pd-meishiki-date-label {
+  white-space: nowrap;
+  color: #000;
+}
+
+.pd-meishiki-date-select {
+  min-width: 132px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #000;
+  cursor: pointer;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+}
+
+.pd-meishiki-date-select:focus {
+  outline: none;
+}
+
+.pd-grid-panel,
+.pd-flow-board,
+.pd-flow-footnote,
+.pd-flow-cluster .pd-grid-head {
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.pd-grid-panel {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.pd-flow-cluster {
+  margin-bottom: 0;
+}
+
+.pd-grid-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-bottom: 1px solid #000;
+  background: #ccffcc;
+}
+
+.pd-flow-cluster .pd-grid-head {
+  border-bottom: none;
+  background: #ccffcc;
+}
+
+.pd-grid-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pd-grid-title {
+  font-weight: 700;
+  line-height: 1.15;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-overview-scroll,
+.pd-flow-board-scroll {
+  overflow-x: auto;
+}
+
+.pd-overview-grid {
+  display: grid;
+  min-width: 612px;
+  background: #fff;
+}
+
+.pd-overview-cell {
+  min-width: 0;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 5px 4px;
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-overview-grid > .pd-overview-cell:nth-child(-n + 9) {
+  background: #ccffcc;
+}
+
+.pd-overview-grid > .pd-overview-cell:nth-child(9n + 1) {
+  background: #ccffcc;
+}
+
+.pd-overview-grid > .pd-overview-cell:nth-child(9n) {
+  border-right: none;
+}
+
+.pd-overview-grid > .pd-overview-cell:nth-last-child(-n + 8),
+.pd-overview-grid > .pd-overview-cell:last-child {
+  border-bottom: none;
+}
+
+.pd-overview-head,
+.pd-overview-side {
+  background: #ccffcc;
+  min-height: 34px;
+}
+
+.pd-overview-side-top {
+  align-items: flex-start;
+  padding-top: 8px;
+}
+
+.pd-overview-star {
+  padding-top: 0;
+  padding-bottom: 0;
+  min-height: 62px;
+}
+
+.pd-overview-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+}
+
+.pd-overview-zoukan {
+  min-height: 72px;
+}
+
+.pd-top-star-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 52px;
+  margin: 0 auto;
+  letter-spacing: 0;
+  font-size: 12px;
+  line-height: 1.05;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-top-star-text span {
+  display: block;
+  line-height: 1.05;
+}
+
+.pd-board-zoukan {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-height: 58px;
+}
+
+.pd-board-zoukan-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  line-height: 1;
+}
+
+.pd-flow-board-first {
+  border-top: none;
+}
+
+.pd-flow-cluster + .pd-flow-board,
+.pd-flow-board + .pd-flow-board {
+  margin-top: 0;
+  border-top: none;
+}
+
+.pd-flow-board {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.pd-flow-board-side {
+  display: grid;
+  grid-template-rows: 36px 1fr;
+}
+
+.pd-flow-board-side-top,
+.pd-flow-board-side-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #000;
+  background: #ccffcc;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-flow-board-side-top {
+  border-bottom: 1px solid #000;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pd-flow-board-side-main {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  background: #ccffcc;
+}
+
+.pd-flow-board-columns {
+  display: grid;
+  min-width: 100%;
+}
+
+.pd-flow-column {
+  appearance: none;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-right: 1px solid #000;
+  background: #fff;
+  color: #000;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pd-flow-column:last-child {
+  border-right: none;
+}
+
+.pd-flow-column-placeholder {
+  cursor: default;
+  pointer-events: none;
+  background: #fff;
+}
+
+.pd-flow-column-placeholder:hover {
+  background: #fff;
+  background-image: none;
+}
+
+.pd-flow-column-stack-placeholder {
+  min-height: 100%;
+}
+
+.pd-flow-column:hover {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.pd-flow-column.is-active {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+.pd-flow-column:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: -2px;
+}
+
+.pd-flow-column-top {
+  min-height: 36px;
+  padding: 2px 2px;
+  border-bottom: 1px solid #000;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-flow-column-top-primary {
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.pd-flow-column-top-secondary {
+  margin-top: 1px;
+  font-size: 12px;
+  color: #000;
+  line-height: 1.1;
+}
+
+.pd-flow-column-bottom {
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+}
+
+.pd-flow-column-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 100%;
+  width: 100%;
+}
+
+.pd-flow-column-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.pd-element-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.pd-element-empty {
+  display: inline-block;
+  min-width: 1em;
+  min-height: 1.25em;
+}
+
+.pd-element-slot .text-element {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  margin: 0;
+  font-size: 25px;
+  line-height: 0.95;
+  font-family: "Kaisei Opti", serif;
+  vertical-align: middle;
+}
+
+.pd-overview-element-ruby .text-element {
+  font-size: 25px;
+}
+
+.pd-element-slot .text-element span {
+  display: inline-block;
+  min-width: 1em;
+  line-height: 1;
+}
+
+.pd-element-slot .text-element rt {
+  margin: 0;
+  padding: 0;
+}
+
+.pd-element-slot .text-element rt.vt {
+  margin-left: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #000;
+}
+
+.pd-overview-element-ruby .text-element rt.vt {
+  font-size: 12px;
+}
+
+.pd-zoukan-element-ruby .text-element {
+  font-size: 19px;
+}
+
+.pd-zoukan-element-ruby .text-element rt.vt {
+  margin-left: 0;
+  font-size: 10px;
+}
+
+.pd-flow-element-ruby .text-element {
+  font-size: 25px;
+  gap: 0;
+  padding: 5px 0;
+  font-family: "Kaisei Opti", serif;
+}
+
+.pd-flow-element-ruby .text-element rt.vt {
+  font-size: 12px;
+}
+
+.pd-flow-element-ruby .text-element span {
+  min-width: 1em;
+  line-height: 1;
+}
+
+.pd-flow-column-tsuhen {
+  min-height: 12px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pd-flow-column-branch-note {
+  margin-top: 1px;
+  min-height: 12px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pd-flow-board-first .pd-flow-column-top {
+  min-height: 30px;
+  padding: 2px 3px;
+}
+
+
+
+
+.pd-flow-footnote {
+  margin-top: 10px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+  background: linear-gradient(to bottom, #ffffff, #EEEBDE);
+}
+
 .pd-export-stage {
   position: fixed;
   left: -10000px;
@@ -476,4 +932,46 @@
     font-size: 16px;
     min-height: 38px;
   }
+
+  .pd-overview-grid {
+    min-width: 540px;
+  }
+
+  .pd-grid-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pd-grid-title {
+  }
+
+  .pd-meishiki-today {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .pd-flow-board {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .pd-flow-board-side {
+    grid-template-rows: 30px 1fr;
+  }
+
+  .pd-flow-column-top {
+    min-height: 30px;
+  }
+
+  .pd-flow-column-bottom {
+    min-height: 92px;
+  }
+
+  .pd-element-slot .text-element rt.vt {
+    font-size: 9px;
+  }
+
+  .pd-zoukan-element-ruby .text-element {
+    font-size: 15px;
+  }
+
 }

@@ -116,6 +116,52 @@ class SuimeiViewResponseTests(TestCase):
         self.assertEqual(set(payload["element_energy_adjusted"]["energy"].keys()), {"木", "火", "土", "金", "水"})
         self.assertIsInstance(payload["element_energy_adjusted"]["adjustments"], list)
 
+    def test_query_response_contains_precision_chart_payload(self):
+        with patch("builtins.print"):
+            response = self.client.post(
+                "/api/query",
+                {
+                    "date": "1997-02-14",
+                    "time": "02:25",
+                    "gender": 1,
+                },
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn("precision_chart", payload)
+        self.assertIn("flow_month", payload["precision_chart"])
+        self.assertIn("flow_year", payload["precision_chart"])
+        self.assertIn("active_daiun", payload["precision_chart"])
+        self.assertIn("flow_months", payload["precision_chart"])
+        self.assertIn("flow_days", payload["precision_chart"])
+        self.assertIn("flow_day", payload["precision_chart"])
+
+    def test_precision_flow_endpoint_returns_selectable_year_month_day_payload(self):
+        with patch("builtins.print"):
+            response = self.client.post(
+                "/api/precision-flow",
+                {
+                    "date": "1997-02-14",
+                    "time": "02:25",
+                    "gender": 1,
+                    "year": 2026,
+                    "month_index": 4,
+                    "day_index": 0,
+                },
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["flow_year_value"], 2026)
+        self.assertIn("flow_year", payload)
+        self.assertIn("flow_months", payload)
+        self.assertIn("flow_days", payload)
+        self.assertIn("selected_month_index", payload)
+        self.assertIn("selected_day_index", payload)
+
 
 class BunsekiExistingOnlyTests(TestCase):
     def setUp(self):
@@ -152,7 +198,7 @@ class BunsekiExistingOnlyTests(TestCase):
         with patch("suimei.views.analyze_bazi", side_effect=AssertionError("should not generate")):
             response = self.api_client.get(f"/api/gpt?meishiki_id={profile.id}&existing_only=1")
 
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
 
     def test_gpt_requires_login(self):
         profile = self.create_profile()
