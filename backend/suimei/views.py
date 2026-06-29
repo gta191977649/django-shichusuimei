@@ -465,6 +465,9 @@ class BunsekiView(APIView):
         meishiki_id = request.query_params.get("meishiki_id")
         if not meishiki_id:
             return Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+        force_refresh = str(request.query_params.get("force", "")).lower() in ["1", "true", "yes"]
+        if force_refresh and not (request.user.is_staff or request.user.is_superuser):
+            return Response({"detail": "Only admin users can force regenerate bunseki."}, status=status.HTTP_403_FORBIDDEN)
 
         meishiki_queryset = Meishiki.objects.all()
         if not (request.user.is_staff or request.user.is_superuser):
@@ -472,7 +475,7 @@ class BunsekiView(APIView):
         meishiki = get_object_or_404(meishiki_queryset, pk=meishiki_id)
 
         existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
-        if existing:
+        if existing and not force_refresh:
             return Response(
                 {
                     "content": existing.content,
@@ -545,6 +548,22 @@ class BunsekiView(APIView):
             )
         finally:
             cache.delete(lock_key)
+
+
+class CurrentUserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                "id": request.user.id,
+                "username": request.user.username,
+                "is_staff": bool(request.user.is_staff),
+                "is_superuser": bool(request.user.is_superuser),
+                "is_admin": bool(request.user.is_staff or request.user.is_superuser),
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class PrecisionFlowView(APIView):

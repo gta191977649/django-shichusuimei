@@ -10,18 +10,26 @@ import Suimei from './page/Suimei'
 import Login from './page/Login'
 
 import Sidebar from './components/Sidebar'
-import { ACCESS_TOKEN, REFRESH_TOKEN } from './api'
+import api, { ACCESS_TOKEN, AUTH_CHANGED_EVENT, clearStoredAuthTokens } from './api'
 
 // Define a constant for the header height
 const HEADER_HEIGHT = '30px'
 
 function App() {
+  const fetchCurrentUser = async () => {
+    try {
+      const res = await api.get('/api/me');
+      return res.data;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  };
+
   // Side bar related function
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const sidebarWidth = sidebarVisible ? '280px' : '0px';
-  const [authUser, setAuthUser] = useState(() => {
-    return localStorage.getItem(ACCESS_TOKEN) ? { username: 'ログイン中' } : null;
-  });
+  const [authUser, setAuthUser] = useState(null);
 
   // !! important !!: global select meishiki profile data
   const [meishiki,setSelectedProfile] = useState(false)
@@ -31,14 +39,52 @@ function App() {
     console.log(meishiki)
   },[meishiki])
 
+  useEffect(() => {
+    if (!localStorage.getItem(ACCESS_TOKEN)) return;
+
+    let active = true;
+    fetchCurrentUser().then((user) => {
+      if (!active) return;
+      if (user) {
+        setAuthUser(user);
+      } else {
+        clearStoredAuthTokens();
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncAuthState = async (event) => {
+      const authenticated = event?.detail?.authenticated ?? Boolean(localStorage.getItem(ACCESS_TOKEN));
+      if (!authenticated) {
+        setAuthUser(null);
+        setSelectedProfile(false);
+        setSidebarVisible(false);
+        return;
+      }
+
+      const user = await fetchCurrentUser();
+      if (user) {
+        setAuthUser(user);
+      } else {
+        setAuthUser(null);
+        setSelectedProfile(false);
+        setSidebarVisible(false);
+      }
+    };
+
+    window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+  }, []);
+
   const isAuthenticated = Boolean(authUser && localStorage.getItem(ACCESS_TOKEN));
 
   const handleLogout = () => {
-    localStorage.removeItem(ACCESS_TOKEN);
-    localStorage.removeItem(REFRESH_TOKEN);
-    setAuthUser(null);
-    setSelectedProfile(false);
-    setSidebarVisible(false);
+    clearStoredAuthTokens();
   };
 
   return (
@@ -134,7 +180,17 @@ function App() {
             <Route path="/home" element={<Suimei />} />
             <Route path="/login" element={<Login onLogin={setAuthUser} />} />
             <Route path="/" element={<Debug profile={meishiki} />} />
-            <Route path="/v2" element={<PercisionDebug profile={meishiki} setSelectedProfile={setSelectedProfile} isAuthenticated={isAuthenticated}/>} />
+            <Route
+              path="/v2"
+              element={
+                <PercisionDebug
+                  profile={meishiki}
+                  setSelectedProfile={setSelectedProfile}
+                  isAuthenticated={isAuthenticated}
+                  isAdmin={Boolean(authUser?.is_admin)}
+                />
+              }
+            />
             <Route path="/app" element={<Calendar />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

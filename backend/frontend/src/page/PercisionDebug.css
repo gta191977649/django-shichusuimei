@@ -331,12 +331,24 @@
 }
 
 .pd-overview-head,
+
+
 .pd-overview-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  padding: 5px;
   background: #ccffcc;
 }
 
 .pd-overview-side-top {
-  align-items: flex-start;
+  align-items: center;
 }
 
 .pd-overview-star {
@@ -767,6 +779,16 @@
 .pd-export-meishiki-label {
   background: #ccffcc;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0;
 }
 
 .pd-export-meishiki-col:last-child,

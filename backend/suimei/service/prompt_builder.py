@@ -162,6 +162,37 @@ def _format_energy_distribution(element_energy):
     return "、".join(parts)
 
 
+def _format_shishen_ratio_distribution(element_energy):
+    if not element_energy:
+        return "无"
+
+    energy = element_energy.get("energy", {})
+    relation = element_energy.get("relation", {})
+    total = sum(float(value) for value in energy.values())
+    if not total:
+        return "无"
+
+    parts = []
+    for element in ["木", "火", "土", "金", "水"]:
+        value = float(energy.get(element, 0))
+        ratio = value / total
+        parts.append(f"{relation.get(element, '-')}({element})={_format_ratio_percent(ratio)}")
+
+    return "、".join(parts)
+
+
+def format_shishen_ratio_reference(bazi):
+    lines = [
+        f"原局：{_format_shishen_ratio_distribution(getattr(bazi, 'element_energy', None))}",
+    ]
+
+    adjusted_energy = getattr(bazi, "element_energy_adjusted", None)
+    if adjusted_energy:
+        lines.append(f"制化補正後参考：{_format_shishen_ratio_distribution(adjusted_energy)}")
+
+    return "\n".join(lines)
+
+
 def format_shin_type_reference(bazi):
     ratio = getattr(bazi, "shin_type_ratio", {}) or {}
     adjusted_ratio = getattr(bazi, "shin_type_ratio_adjusted", {}) or {}
@@ -451,6 +482,11 @@ def build_prompt_from_meishiki(bazi) -> str:
         + _format_pillar_reference_line(bazi, 2, "日柱")
         + _format_time_pillar_reference_line(bazi)
     )
+    reference_prompt += f"[十神能量占比]：{format_shishen_ratio_reference(bazi)}"
+    if _is_birth_time_unknown(bazi):
+        reference_prompt += "（出生時刻不明のため、内部占位時刻ベースの参考値です。時柱依存の定量判断には使わないでください。）\n"
+    else:
+        reference_prompt += "\n"
 
     if _is_birth_time_unknown(bazi):
         reference_prompt += "[刑冲破害・合化裁决]：出生時刻不明のため、時柱に関わる関係は暫定的に判定しません。時柱を既知の事実として扱わないでください。\n"

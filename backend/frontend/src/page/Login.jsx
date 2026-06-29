@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api, { ACCESS_TOKEN, REFRESH_TOKEN } from "../api";
+import api, { setStoredAuthTokens } from "../api";
 
 export default function Login({ onLogin }) {
   const navigate = useNavigate();
@@ -24,8 +24,10 @@ export default function Login({ onLogin }) {
         username: username.trim(),
         password,
       });
-      localStorage.setItem(ACCESS_TOKEN, res.data.access);
-      localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
+      setStoredAuthTokens({
+        access: res.data.access,
+        refresh: res.data.refresh,
+      });
       onLogin?.({ username: username.trim() });
       navigate("/v2");
     } catch (err) {

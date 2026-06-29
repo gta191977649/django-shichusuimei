@@ -8,7 +8,9 @@ from django.conf import settings
 from openai import APIConnectionError, AuthenticationError, OpenAI, RateLimitError
 
 DEEPSEEK_BASE_URL = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = getattr(settings, "DEEPSEEK_MODEL", "deepseek-reasoner")
+DEEPSEEK_MODEL = getattr(settings, "DEEPSEEK_MODEL", "deepseek-v4-pro")
+DEEPSEEK_THINKING = getattr(settings, "DEEPSEEK_THINKING", {"type": "enabled"})
+DEEPSEEK_REASONING_EFFORT = getattr(settings, "DEEPSEEK_REASONING_EFFORT", "high")
 
 
 class DeepseekError(RuntimeError):
@@ -77,14 +79,16 @@ def analyze_bazi(messages: List[dict], stream_debug: bool = False):
         }
     """
     client = _client()
+    request_options = {
+        "model": DEEPSEEK_MODEL,
+        "messages": messages,
+        "reasoning_effort": DEEPSEEK_REASONING_EFFORT,
+        "extra_body": {"thinking": DEEPSEEK_THINKING},
+    }
 
     # --- Non-stream mode (simple) ---
     if not stream_debug:
-        resp = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=messages,
-            stream=False,
-        )
+        resp = client.chat.completions.create(**request_options, stream=False)
         raw = resp.choices[0].message.content
         parsed = _safe_parse_json(raw)
         return {"data": parsed, "reply": raw, "reasoning": ""}
@@ -95,11 +99,7 @@ def analyze_bazi(messages: List[dict], stream_debug: bool = False):
     full_reasoning = ""
 
     try:
-        stream = client.chat.completions.create(
-            model=DEEPSEEK_MODEL,
-            messages=messages,
-            stream=True,
-        )
+        stream = client.chat.completions.create(**request_options, stream=True)
 
         for chunk in stream:
             if hasattr(chunk, "choices") and chunk.choices:

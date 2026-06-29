@@ -229,6 +229,32 @@ class BunsekiExistingOnlyTests(TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_admin_force_refresh_regenerates_even_when_cached(self):
+        admin = User.objects.create_superuser(username="admin-force", password="test-password")
+        profile = self.create_profile()
+        Bunseki.objects.create(
+            meishiki=profile,
+            content=[{"entity": "cached", "content": "already exists"}],
+            reason="cached reason",
+        )
+        admin_client = APIClient()
+        admin_client.force_authenticate(user=admin)
+
+        with patch("builtins.print"), patch("suimei.views.analyze_bazi", return_value={"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"}):
+            response = admin_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["content"][0]["entity"], "fresh")
+        self.assertEqual(payload["reason"], "new reason")
+
+    def test_non_admin_cannot_force_refresh(self):
+        profile = self.create_profile()
+
+        response = self.api_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
+
+        self.assertEqual(response.status_code, 403)
+
 
 class MeishikiProfilePermissionTests(TestCase):
     def test_profile_api_requires_login(self):
@@ -297,6 +323,20 @@ class RegistrationDisabledTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
+
+class CurrentUserViewTests(TestCase):
+    def test_current_user_view_returns_admin_flag(self):
+        admin = User.objects.create_superuser(username="admin-user", password="test-password")
+        client = APIClient()
+        client.force_authenticate(user=admin)
+
+        response = client.get("/api/me")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["username"], "admin-user")
+        self.assertTrue(payload["is_admin"])
 
 
 class GoukaResolutionTests(TestCase):
@@ -392,6 +432,30 @@ class PromptBuilderTests(TestCase):
 
         self.assertIn("時柱不明", serialized)
         self.assertIn("時柱を既知の事実として扱わないでください", serialized)
+
+    def test_prompt_includes_shishen_ratio_reference(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+
+        with patch("builtins.print"):
+            messages = build_prompt_from_meishiki(meishi)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("十神能量占比", serialized)
+        self.assertIn("制化補正後参考", serialized)
+
+    def test_prompt_marks_shishen_ratio_reference_as_placeholder_when_birth_time_is_unknown(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+        meishi.birth_time_unknown = True
+        meishi.birth_time_display = "時刻不明"
+
+        with patch("builtins.print"):
+            messages = build_prompt_from_meishiki(meishi)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("十神能量占比", serialized)
+        self.assertIn("内部占位時刻ベースの参考値", serialized)
 
 class PromptBuilderLanguageTests(TestCase):
     def test_prompt_does_not_force_traditional_chinese_output(self):

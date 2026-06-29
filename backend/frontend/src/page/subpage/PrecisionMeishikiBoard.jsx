@@ -502,7 +502,7 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
             className="pd-overview-grid"
             style={{ gridTemplateColumns: `78px repeat(${overviewColumns.length}, minmax(82px, 1fr))` }}
           >
-            {renderOverviewCell("項目", "pd-overview-head")}
+            {renderOverviewCell("-", "pd-overview-head pd-overview-side")}
             {overviewColumns.map((column) => renderOverviewCell(column.label, "pd-overview-head"))}
 
             {renderOverviewCell("主星", "pd-overview-side")}

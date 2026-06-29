@@ -30,7 +30,7 @@ const getElementColor = (element) => {
   return "black";
 };
 
-export default function PercisionDebug({ profile, setSelectedProfile, isAuthenticated = false }) {
+export default function PercisionDebug({ profile, setSelectedProfile, isAuthenticated = false, isAdmin = false }) {
   const [response, setResponse] = useState(false);
   const [aiResponse, setAIResponse] = useState(null);
   const [showReason, setShowReason] = useState(false);
@@ -170,15 +170,20 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
     }
   }, [profile, isAuthenticated]);
 
-  const aiQuery = async () => {
-    if (!isAuthenticated || !profile?.id) return;
+  const aiQuery = async ({ force = false, targetProfile = profile } = {}) => {
+    if (!isAuthenticated || !targetProfile?.id) return;
 
     setShowReason(false);
     setAILoading(true);
-    setAIStatus("AI解読を準備中…");
+    setAIStatus(force ? "AI解読を更新中…" : "AI解読を準備中…");
 
     try {
-      const res = await api.get(`/api/gpt?meishiki_id=${profile.id}`);
+      const res = await api.get("/api/gpt", {
+        params: {
+          meishiki_id: targetProfile.id,
+          ...(force ? { force: 1 } : {}),
+        },
+      });
       if (res.status === 202) {
         setAIResponse(null);
         setAIStatus(res.data?.detail || "解読生成中です…");
@@ -225,7 +230,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
         Boolean(form.birthTimeUnknown) !== initialBirthTimeUnknown;
       const genderChanged = (form.gender ?? "") !== initialGender;
 
-      if (!nameChanged && !dateChanged && !genderChanged) return;
+      if (!nameChanged && !dateChanged && !genderChanged) return profile;
 
       if (nameChanged) {
         const created = await api
@@ -238,7 +243,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
           .then((r) => r.data);
 
         setSelectedProfile(created);
-        return;
+        return created;
       }
 
       if (profile?.id) {
@@ -250,7 +255,9 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
         if (Object.keys(patchData).length > 0) {
           const updated = await api.patch(`/api/meishiki/${profile.id}/`, patchData).then((r) => r.data);
           setSelectedProfile(updated);
+          return updated;
         }
+        return profile;
       } else {
         const created = await api
           .post("/api/meishiki/", {
@@ -261,11 +268,21 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
           })
           .then((r) => r.data);
         setSelectedProfile(created);
+        return created;
       }
     } catch (err) {
       console.error(err);
       alert("保存失敗");
+      return null;
     }
+  };
+
+  const refreshAiQuery = async () => {
+    if (!isAdmin) return;
+
+    const savedProfile = await save();
+    if (!savedProfile?.id) return;
+    await aiQuery({ force: true, targetProfile: savedProfile });
   };
 
   const toJapaneseEra = (isoDate) => {
@@ -537,6 +554,16 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
       .pd-export-meishiki-label {
         background: #ccffcc;
         font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        writing-mode: vertical-rl;
+        text-orientation: upright;
+        letter-spacing: 1px;
+        line-height: 1.1;
+        text-align: center;
+        white-space: nowrap;
+        padding: 0;
       }
 
       .pd-export-meishiki-col:last-child,
@@ -831,7 +858,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
   const renderExportMeishiki = () => (
     <div className="pd-export-meishiki">
       <div className="pd-export-meishiki-row pd-export-meishiki-head">
-        <div className="pd-export-meishiki-label">項目</div>
+        <div className="pd-export-meishiki-label">-</div>
         <div className="pd-export-meishiki-col">年柱</div>
         <div className="pd-export-meishiki-col">月柱</div>
         <div className="pd-export-meishiki-col">日柱</div>
@@ -925,6 +952,11 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
                     <button type="button" className="pd-action-button" onClick={aiQuery}>
                       AI解読
                     </button>
+                    {isAdmin ? (
+                      <button type="button" className="pd-action-button" onClick={refreshAiQuery} disabled={aiLoading}>
+                        解読更新
+                      </button>
+                    ) : null}
                   </>
                 ) : null}
                 <button
@@ -1061,6 +1093,11 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
                 {isAuthenticated ? (
                   <button type="button" className="pd-action-button" onClick={aiQuery} disabled={aiLoading}>
                     {aiLoading ? "生成中…" : aiResponse ? "再解読" : "AI解読開始"}
+                  </button>
+                ) : null}
+                {isAuthenticated && isAdmin ? (
+                  <button type="button" className="pd-action-button" onClick={refreshAiQuery} disabled={aiLoading}>
+                    解読更新
                   </button>
                 ) : null}
               </div>
