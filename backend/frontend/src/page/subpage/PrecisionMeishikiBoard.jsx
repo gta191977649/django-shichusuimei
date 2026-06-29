@@ -14,12 +14,19 @@ const KAN_RELATION_TABLES = [
 ];
 const SHI_RELATION_TABLES = [
   { type: "支合", pairs: [["子", "丑", "土"], ["辰", "酉", "金"], ["申", "巳", "水"], ["寅", "亥", "木"], ["午", "未", "火/土"], ["卯", "戌", "火"]] },
+  { type: "半合", pairs: [["申", "子", "水"], ["子", "辰", "水"], ["亥", "卯", "木"], ["卯", "未", "木"], ["寅", "午", "火"], ["午", "戌", "火"], ["巳", "酉", "金"], ["酉", "丑", "金"]] },
   { type: "暗合", pairs: [["寅", "丑"], ["申", "卯"], ["午", "亥"], ["子", "巳"]] },
   { type: "支沖", pairs: [["午", "子"], ["未", "丑"], ["申", "寅"], ["酉", "卯"], ["戌", "辰"], ["亥", "巳"]] },
   { type: "支刑", pairs: [["子", "卯"], ["寅", "巳"], ["巳", "申"], ["申", "寅"], ["丑", "戌"], ["戌", "未"], ["未", "丑"]] },
   { type: "自刑", pairs: [["辰", "辰"], ["午", "午"], ["酉", "酉"], ["亥", "亥"]] },
   { type: "支破", pairs: [["酉", "子"], ["辰", "丑"], ["亥", "寅"], ["午", "卯"], ["申", "巳"], ["未", "戌"]] },
   { type: "支害", pairs: [["酉", "戌"], ["申", "亥"], ["未", "子"], ["午", "丑"], ["巳", "寅"], ["辰", "卯"]] },
+];
+const SANHE_RELATION_TABLES = [
+  { type: "三合局", members: ["申", "子", "辰"], to: "水" },
+  { type: "三合局", members: ["亥", "卯", "未"], to: "木" },
+  { type: "三合局", members: ["寅", "午", "戌"], to: "火" },
+  { type: "三合局", members: ["巳", "酉", "丑"], to: "金" },
 ];
 
 const formatDate = (value) => {
@@ -35,7 +42,10 @@ const pairMatches = (left, right, pair) =>
 const formatRelationLabel = (relation) => {
   if (!relation) return "";
   if (relation.to && relation.type && relation.type.includes("合")) {
-    return `合化${relation.to}`;
+    return `${relation.type}化${relation.to}`;
+  }
+  if (relation.to && relation.type) {
+    return `${relation.type}${relation.to}`;
   }
   return relation.type || "";
 };
@@ -45,6 +55,37 @@ const buildRelations = (columns, realm) => {
   const tables = realm === "kan" ? KAN_RELATION_TABLES : SHI_RELATION_TABLES;
   const valueKey = realm === "kan" ? "stem" : "branch";
   const relations = [];
+  const sanhePairKeys = new Set();
+
+  if (realm === "shi") {
+    SANHE_RELATION_TABLES.forEach((table) => {
+      const indexes = [];
+      const elements = [];
+      table.members.forEach((member) => {
+        const index = columns.findIndex((column) => column[valueKey] === member);
+        if (index >= 0) {
+          indexes.push(index);
+          elements.push(member);
+        }
+      });
+
+      if (indexes.length !== table.members.length) return;
+      table.members.forEach((left, leftIndex) => {
+        table.members.slice(leftIndex + 1).forEach((right) => {
+          sanhePairKeys.add([left, right].sort().join("-"));
+        });
+      });
+      relations.push({
+        key: `${realm}-${indexes.join("-")}-${table.type}`,
+        realm,
+        type: table.type,
+        to: table.to,
+        element: elements,
+        index: indexes,
+        labels: indexes.map((index) => columns[index].label),
+      });
+    });
+  }
 
   columns.forEach((leftColumn, leftIndex) => {
     const left = leftColumn[valueKey];
@@ -58,6 +99,7 @@ const buildRelations = (columns, realm) => {
       tables.forEach((table) => {
         const matchedPair = table.pairs.find((pair) => pairMatches(left, right, pair));
         if (!matchedPair) return;
+        if (table.type === "半合" && sanhePairKeys.has([left, right].sort().join("-"))) return;
         relations.push({
           key: `${realm}-${leftIndex}-${rightIndex}-${table.type}`,
           realm,
@@ -521,19 +563,24 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
                   return renderOverviewCell(<span className="pd-relation-empty">-</span>, relationCellClass);
                 }
 
-                const [startIndex, endIndex] = relation.index;
-                if (columnIndex !== startIndex && columnIndex !== endIndex) {
+                const relationColumnIndex = relation.index.indexOf(columnIndex);
+                if (relationColumnIndex < 0) {
                   return renderOverviewCell(<span className="pd-relation-empty"> </span>, relationCellClass);
                 }
 
-                const markerSide = columnIndex === startIndex ? "start" : "end";
-                const markerElement = columnIndex === startIndex ? relation.element[0] : relation.element[1];
+                const markerSide = relationColumnIndex === 0
+                  ? "start"
+                  : (relationColumnIndex === relation.index.length - 1 ? "end" : "middle");
+                const markerElement = relation.element[relationColumnIndex];
                 const relationLabel = formatRelationLabel(relation);
+                const relationTitle = relation.index
+                  .map((_, itemIndex) => `${relation.labels[itemIndex]} ${relation.element[itemIndex]}`)
+                  .join(" - ");
                 return renderOverviewCell(
                   <div className="pd-relation-marker-stack">
                     <span
                       className={`pd-relation-marker pd-relation-${prefix}-${relationIndex}-${markerSide}`}
-                      title={`${relation.labels[0]} ${relation.element[0]} - ${relation.labels[1]} ${relation.element[1]} ${relationLabel}`}
+                      title={`${relationTitle} ${relationLabel}`}
                     >
                       {markerElement}
                     </span>

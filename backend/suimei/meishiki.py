@@ -548,7 +548,11 @@ class Meishi:
                 return
             adjustment = {
                 "type": item.get("type"),
+                "source_type": item.get("source_type") or item.get("type"),
                 "state": item.get("state"),
+                "relation_element": item.get("element", []),
+                "to": item.get("to"),
+                "score": item.get("score"),
                 "element": element,
                 "delta": round(delta, 4),
                 "action": action,
@@ -591,7 +595,19 @@ class Meishi:
                 continue
 
             if kind in {"合", "暗合"}:
-                rate = (0.035 if item.get("realm") == "kan" else 0.045) * strength
+                relation_type = item.get("type")
+                bind_rate = {
+                    "干合": 0.035,
+                    "支合": 0.045,
+                    "暗合": 0.035,
+                    "三合局": 0.060,
+                    "半合": 0.040,
+                }.get(relation_type, 0.045 if item.get("realm") == "shi" else 0.035)
+                target_gain_ratio = {
+                    "三合局": 0.75,
+                    "半合": 0.45,
+                }.get(relation_type, 0.5)
+                rate = bind_rate * strength
                 total_bound = 0.0
                 for element in sorted(set(source_elements)):
                     delta = adjusted[element] * rate
@@ -608,7 +624,7 @@ class Meishi:
                 target = self._single_target_element(item.get("to"))
                 if target:
                     season_temper = self._gouka_season_temper(target)
-                    gain = total_bound * 0.5 * season_temper["season_factor"]
+                    gain = total_bound * target_gain_ratio * season_temper["season_factor"]
                     adjusted[target] += gain
                     add_adjustment(
                         item,
@@ -643,7 +659,13 @@ class Meishi:
 
             source_type = item.get("source_type")
             season_temper = self._gouka_season_temper(target)
-            base_rate = (0.22 if source_type == "干合" else 0.18) * (float(item.get("score") or 0) / 100.0)
+            transform_base_rate = {
+                "干合": 0.22,
+                "支合": 0.18,
+                "三合局": 0.24,
+                "半合": 0.14,
+            }.get(source_type, 0.18)
+            base_rate = transform_base_rate * (float(item.get("score") or 0) / 100.0)
             rate = base_rate * season_temper["season_factor"]
             total_transfer = 0.0
             for element in sorted(set(source_elements)):

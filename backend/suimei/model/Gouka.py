@@ -23,6 +23,24 @@ class Gouka:
         ("子", "巳"),
     ]
 
+    sanhe = [
+        ("申", "子", "辰", "水"),
+        ("亥", "卯", "未", "木"),
+        ("寅", "午", "戌", "火"),
+        ("巳", "酉", "丑", "金"),
+    ]
+
+    banhe = [
+        ("申", "子", "水"),
+        ("子", "辰", "水"),
+        ("亥", "卯", "木"),
+        ("卯", "未", "木"),
+        ("寅", "午", "火"),
+        ("午", "戌", "火"),
+        ("巳", "酉", "金"),
+        ("酉", "丑", "金"),
+    ]
+
     kanchu = [
         ("甲", "庚"),
         ("乙", "辛"),
@@ -128,6 +146,8 @@ class Gouka:
     relation_base_scores = {
         "干合": 62,
         "支合": 60,
+        "三合局": 76,
+        "半合": 56,
         "暗合": 48,
         "干沖": 72,
         "支沖": 74,
@@ -232,6 +252,34 @@ class Gouka:
 
     def _detect_shi_relations(self):
         relations = []
+        branch_positions = {}
+        for index, shi_data in enumerate(self.meishiki["shi"]):
+            branch_positions.setdefault(shi_data["element"], []).append(index)
+
+        used_sanhe_pairs = set()
+        for group in self.sanhe:
+            members = group[:3]
+            target = group[3]
+            if all(member in branch_positions for member in members):
+                indexes = [branch_positions[member][0] for member in members]
+                relations.append(self._build_candidate("shi", "三合局", "合", list(members), indexes, target))
+                for left_index in range(len(members)):
+                    for right_index in range(left_index + 1, len(members)):
+                        used_sanhe_pairs.add(frozenset([members[left_index], members[right_index]]))
+
+        for left, right, target in self.banhe:
+            if left in branch_positions and right in branch_positions and frozenset([left, right]) not in used_sanhe_pairs:
+                relations.append(
+                    self._build_candidate(
+                        "shi",
+                        "半合",
+                        "合",
+                        [left, right],
+                        [branch_positions[left][0], branch_positions[right][0]],
+                        target,
+                    )
+                )
+
         for i, shi_data in enumerate(self.meishiki["shi"]):
             shi_1 = shi_data["element"]
             for j in range(i + 1, len(self.meishiki["shi"])):
@@ -350,7 +398,7 @@ class Gouka:
         return resolved
 
     def _judge_transformation(self, candidate, peers):
-        if candidate["type"] not in {"干合", "支合"}:
+        if candidate["type"] not in {"干合", "支合", "三合局", "半合"}:
             return {
                 "eligible": False,
                 "state": "不适用",
@@ -450,9 +498,10 @@ class Gouka:
             return ["命局内未检测到刑沖破害、干合支合等关系。"]
 
         for candidate in resolved_candidates:
+            elements = "-".join(candidate["element"])
             text = (
                 f"{self._format_pillar_pair(candidate['index'])}"
-                f"{candidate['element'][0]}-{candidate['element'][1]} {candidate['type']}：{candidate['state']}"
+                f"{elements} {candidate['type']}：{candidate['state']}"
                 f"（score={candidate['score']}）"
             )
             transform = candidate.get("transform", {})
@@ -465,7 +514,8 @@ class Gouka:
         transform_effects = [item for item in effective_candidates if item["type"] in {"干化", "支化"}]
         if transform_effects:
             transform_text = "；".join(
-                f"{self._format_pillar_pair(item['index'])}{item['element'][0]}-{item['element'][1]} {item['type']}→{item['to']}"
+                f"{self._format_pillar_pair(item['index'])}{'-'.join(item['element'])} "
+                f"{item.get('source_type', item['type'])}/{item['type']}→{item['to']}"
                 for item in transform_effects
             )
             summary.append(f"成化成立：{transform_text}")
@@ -510,4 +560,4 @@ class Gouka:
         return self.branch_to_element.get(symbol)
 
     def _format_pillar_pair(self, indexes):
-        return f"{self.pillar_names[indexes[0]]}-{self.pillar_names[indexes[1]]}"
+        return "-".join(self.pillar_names[index] for index in indexes)

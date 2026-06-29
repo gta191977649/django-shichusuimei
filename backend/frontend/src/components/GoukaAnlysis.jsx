@@ -84,11 +84,19 @@ function formatPillarPair(indexes = []) {
 }
 
 function formatRelation(item) {
-  const left = item?.element?.[0] || '';
-  const right = item?.element?.[1] || '';
+  const elements = Array.isArray(item?.element) ? item.element.join('') : '';
   const type = item?.type || '';
   const target = item?.to ? `→${item.to}` : '';
-  return `${left}${right} ${type}${target}`.trim();
+  return `${elements} ${type}${target}`.trim();
+}
+
+function formatRelationLabel(item) {
+  const type = item?.type || '';
+  if (!type) return '';
+  if (item?.to && type.includes('合')) {
+    return `${type}化${item.to}`;
+  }
+  return item?.to ? `${type}${item.to}` : type;
 }
 
 function isKnownElement(value, realm) {
@@ -100,6 +108,7 @@ function isRenderableRelation(item, realm, birthTimeUnknown) {
   const indexes = Array.isArray(item?.index) ? item.index : [];
   const elements = Array.isArray(item?.element) ? item.element : [];
   if (indexes.length < 2 || elements.length < 2) return false;
+  if (indexes.length !== elements.length) return false;
   if (birthTimeUnknown && indexes.includes(3)) return false;
   return elements.every((element) => isKnownElement(element, realm));
 }
@@ -265,7 +274,7 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
           y2,
           color: 'black',
           thickness: 1.2,
-          label: `${item.type}${item.to ? item.to : ''}`,
+          label: formatRelationLabel(item),
           offset: 10,
         });
       });
@@ -321,19 +330,28 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
     if (!Array.isArray(data)) return null;
 
     return data.map((item, rowIdx) => {
-      const [startIndex, endIndex] = item.index;
+      const startIndex = item.index[0];
+      const endIndex = item.index[item.index.length - 1];
       const lineId = `gouka-${prefix}-${rowIdx}`;
       const isActive = activeRelationKey === relationKey(item);
       return (
         <tr key={`${lineId}-row`} className={isActive ? 'gouka-row-active' : ''}>
           {[0, 1, 2, 3].map((colIdx) => (
             <td key={`${lineId}-col-${colIdx}`}>
-              {colIdx === startIndex ? (
-                <div className={`gouka-element ${lineId}-start${isActive ? ' gouka-element-active' : ''}`}>{item.element[0]}</div>
-              ) : null}
-              {colIdx === endIndex ? (
-                <div className={`gouka-element ${lineId}-end${isActive ? ' gouka-element-active' : ''}`}>{item.element[1]}</div>
-              ) : null}
+              {item.index.map((itemIndex, elementIndex) => {
+                if (colIdx !== itemIndex) return null;
+                const endpointClass = itemIndex === startIndex
+                  ? `${lineId}-start`
+                  : (itemIndex === endIndex ? `${lineId}-end` : '');
+                return (
+                  <div
+                    key={`${lineId}-${colIdx}-${elementIndex}`}
+                    className={`gouka-element ${endpointClass}${isActive ? ' gouka-element-active' : ''}`.trim()}
+                  >
+                    {item.element[elementIndex]}
+                  </div>
+                );
+              })}
             </td>
           ))}
         </tr>
@@ -417,6 +435,10 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
               const midX = (newX1 + newX2) / 2;
               const midY = (newY1 + newY2) / 2;
               const computedAngle = (angle * 180) / Math.PI;
+              const labelAngle = computedAngle > 90
+                ? computedAngle - 180
+                : (computedAngle < -90 ? computedAngle + 180 : computedAngle);
+              const labelWidth = Math.max(40, String(label || '').length * 13 + 12);
 
               return (
                 <g key={index}>
@@ -432,12 +454,12 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                   {label ? (
                     <>
                       <rect
-                        x={midX - 20}
+                        x={midX - labelWidth / 2}
                         y={midY - 10}
-                        width={40}
+                        width={labelWidth}
                         height={20}
                         fill={isActive ? '#fff4cf' : 'white'}
-                        transform={`rotate(${computedAngle}, ${midX}, ${midY})`}
+                        transform={`rotate(${labelAngle}, ${midX}, ${midY})`}
                       />
                       <text
                         x={midX}
@@ -447,7 +469,7 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                         fill={isActive ? '#b42318' : color}
                         fontSize="12"
                         fontWeight={isActive ? '700' : '400'}
-                        transform={`rotate(${computedAngle}, ${midX}, ${midY})`}
+                        transform={`rotate(${labelAngle}, ${midX}, ${midY})`}
                       >
                         {label}
                       </text>

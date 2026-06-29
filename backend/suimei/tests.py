@@ -1,4 +1,5 @@
 import datetime
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -10,7 +11,11 @@ from suimei.meishiki import Meishi
 from suimei.model.Gouka import Gouka
 from suimei.model.bunseki import Bunseki
 from suimei.model.meishiki import Meishiki as MeishikiRecord
-from suimei.service.prompt_builder import build_prompt_from_meishiki
+from suimei.service.prompt_builder import (
+    build_prompt_from_meishiki,
+    format_gouka_reference,
+    format_shin_type_reference,
+)
 
 
 TEST_BIRTHDATE = datetime.datetime(1997, 2, 14, 2, 25)
@@ -121,6 +126,49 @@ class GoukaAdjustedEnergyTests(TestCase):
         self.assertEqual(payload["energy"], base_energy)
         self.assertEqual(payload["basis"], "gouka_resolved")
         self.assertEqual(payload["basis_detail"], "gouka_resolved_tsukirei_tempered")
+
+    def test_sanhe_transformation_contributes_to_adjusted_energy(self):
+        base_energy = {"木": 0.0, "火": 0.0, "土": 100.0, "金": 100.0, "水": 0.0}
+        gouka = {
+            "resolved": {
+                "kan": [],
+                "shi": [
+                    {
+                        "realm": "shi",
+                        "type": "三合局",
+                        "kind": "合",
+                        "state": "成立",
+                        "to": "水",
+                        "element": ["申", "子", "辰"],
+                        "score": 100,
+                    }
+                ],
+                "effective_kan": [],
+                "effective_shi": [
+                    {
+                        "type": "支化",
+                        "source_type": "三合局",
+                        "state": "化成",
+                        "to": "水",
+                        "element": ["申", "子", "辰"],
+                        "score": 100,
+                    }
+                ],
+            }
+        }
+
+        payload = self.build_stub_meishi("子")._build_gouka_adjusted_element_energy(
+            base_energy=base_energy,
+            gouka=gouka,
+        )
+
+        self.assertGreater(payload["energy"]["水"], base_energy["水"])
+        self.assertTrue(
+            any(
+                item["source_type"] == "三合局" and item["action"] == "化入"
+                for item in payload["adjustments"]
+            )
+        )
 
 
 class SuimeiViewResponseTests(TestCase):
@@ -465,6 +513,39 @@ class GoukaResolutionTests(TestCase):
         self.assertIn(zi_chou_he["state"], {"減力", "失效"})
         self.assertEqual(zi_wu_chong["state"], "成立")
 
+    def test_gouka_detects_sanhe_and_banhe(self):
+        sanhe_meishiki = self.build_stub_meishiki(
+            ["甲", "乙", "丙", "丁"],
+            ["申", "子", "辰", "午"],
+            [
+                ["庚", "壬", "戊"],
+                ["癸", None, None],
+                ["戊", "乙", "癸"],
+                ["丁", "己", None],
+            ],
+        )
+        banhe_meishiki = self.build_stub_meishiki(
+            ["甲", "乙", "丙", "丁"],
+            ["申", "子", "丑", "午"],
+            [
+                ["庚", "壬", "戊"],
+                ["癸", None, None],
+                ["己", "辛", "癸"],
+                ["丁", "己", None],
+            ],
+        )
+
+        sanhe_gouka = Gouka(sanhe_meishiki).gouka
+        banhe_gouka = Gouka(banhe_meishiki).gouka
+
+        sanhe = next(item for item in sanhe_gouka["shi"] if item["type"] == "三合局")
+        banhe = next(item for item in banhe_gouka["shi"] if item["type"] == "半合")
+
+        self.assertEqual(sanhe["element"], ["申", "子", "辰"])
+        self.assertEqual(sanhe["to"], "水")
+        self.assertEqual(banhe["element"], ["申", "子"])
+        self.assertEqual(banhe["to"], "水")
+
 
 class PromptBuilderTests(TestCase):
     def test_prompt_includes_gouka_resolution_reference(self):
@@ -479,6 +560,19 @@ class PromptBuilderTests(TestCase):
         self.assertIn("Chart-level裁决", serialized)
         self.assertIn("不得把所有“合”直接当作“化”", serialized)
 
+    def test_gouka_reference_renders_sanhe_full_members(self):
+        text = format_gouka_reference({
+            "kan": [],
+            "shi": [
+                {"type": "三合局", "element": ["申", "子", "辰"], "to": "水"},
+                {"type": "半合", "element": ["申", "子"], "to": "水"},
+            ],
+            "resolved": {"summary": ["地支三合局裁决参照"]},
+        })
+
+        self.assertIn("申子辰三合局→水", text)
+        self.assertIn("申子半合→水", text)
+
     def test_prompt_includes_shin_type_ratio_reference(self):
         with patch("builtins.print"):
             meishi = Meishi(TEST_BIRTHDATE, 1)
@@ -492,6 +586,42 @@ class PromptBuilderTests(TestCase):
         self.assertIn("同行", serialized)
         self.assertIn("異行", serialized)
         self.assertIn("制化裁決補正後参考", serialized)
+
+    def test_shin_type_reference_includes_sanhe_adjustment_detail(self):
+        relation = {"木": "財", "火": "官", "土": "印", "金": "比劫", "水": "食傷"}
+        bazi = SimpleNamespace(
+            shin_type="身弱",
+            shin_type_adjusted="身中",
+            shin_type_ratio={"same_ratio": 0.45, "different_ratio": 0.55, "delta": -0.10},
+            shin_type_ratio_adjusted={"same_ratio": 0.50, "different_ratio": 0.50, "delta": 0.0},
+            element_energy={"energy": TEST_ENERGY, "relation": relation},
+            element_energy_adjusted={
+                "energy": {"木": 110.0, "火": 75.0, "土": 50.0, "金": 35.0, "水": 130.0},
+                "relation": relation,
+                "basis_detail": "gouka_resolved_tsukirei_tempered",
+                "adjustments": [
+                    {
+                        "type": "支化",
+                        "source_type": "三合局",
+                        "relation_element": ["申", "子", "辰"],
+                        "to": "水",
+                        "action": "化入",
+                        "element": "水",
+                        "delta": 30.0,
+                        "season_factor": 1.2,
+                    }
+                ],
+            },
+        )
+
+        text = format_shin_type_reference(bazi)
+
+        self.assertIn("三合局", text)
+        self.assertIn("制化裁決補正明細", text)
+        self.assertIn("申子辰", text)
+        self.assertIn("补正依据", text)
+        self.assertIn("反映刑、冲、破、害", text)
+        self.assertNotIn("補正根拠", text)
     def test_prompt_marks_time_pillar_unknown_when_birth_time_is_unknown(self):
         with patch("builtins.print"):
             meishi = Meishi(TEST_BIRTHDATE, 1)

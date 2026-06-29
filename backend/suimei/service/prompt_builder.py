@@ -125,16 +125,53 @@ def format_gouka_reference(gouka):
     summary = resolved.get("summary", [])
 
     def _render(items):
-        return "、".join(
-            f"{item['element'][0]}{item['element'][1]}{item['type']}{f'→{item['to']}' if item.get('to') else ''}"
-            for item in items
-        ) or "无"
+        rendered = []
+        for item in items:
+            elements = "".join(str(element) for element in item.get("element", []))
+            target = f"→{item['to']}" if item.get("to") else ""
+            state = f"({item['state']})" if item.get("state") else ""
+            rendered.append(f"{elements}{item.get('type', '-')}{target}{state}")
+        return "、".join(rendered) or "无"
 
     return (
         f"原始检出[天干]：{_render(raw_kan)}\n"
         f"原始检出[地支]：{_render(raw_shi)}\n"
         f"Chart-level裁决：{'；'.join(summary) if summary else '无'}"
     )
+
+
+def _format_adjustment_reference(adjustments):
+    if not adjustments:
+        return "无"
+
+    important_types = {"三合局", "半合"}
+    important_actions = {"化入", "合意"}
+    important = [
+        item for item in adjustments
+        if item.get("type") in important_types
+        or item.get("source_type") in important_types
+        or item.get("action") in important_actions
+    ]
+    if not important:
+        important = adjustments[:6]
+
+    parts = []
+    for item in important[:8]:
+        source_type = item.get("source_type") or item.get("type") or "-"
+        relation = "".join(str(element) for element in item.get("relation_element", []))
+        target = f"→{item.get('to')}" if item.get("to") else ""
+        delta = item.get("delta")
+        delta_text = f"{delta:+.2f}" if isinstance(delta, (int, float)) else str(delta or "-")
+        season = (
+            f"、月令factor={item.get('season_factor')}"
+            if item.get("season_factor") is not None
+            else ""
+        )
+        parts.append(
+            f"{source_type}{relation}{target}/{item.get('action', '-')}:{item.get('element', '-')} {delta_text}{season}"
+        )
+
+    return "；".join(parts)
 
 
 def _format_ratio_percent(value):
@@ -216,9 +253,9 @@ def format_shin_type_reference(bazi):
             item for item in adjustments
             if item.get("season_factor") is not None
         ]
-        basis_note = "刑・沖・破・害・合化の裁決結果を反映"
+        basis_note = "反映刑、冲、破、害、干合、支合、暗合、三合局、半合的裁决结果"
         if basis_detail == "gouka_resolved_tsukirei_tempered":
-            basis_note += "、合意・化成は化神の月令係数で温和に調制"
+            basis_note += "，合意与化成（包含三合局、半合）会按化神的月令系数进行温和调制"
         lines.extend([
             (
                 f"制化裁決補正後参考：{adjusted_type or '-'}"
@@ -227,7 +264,8 @@ def format_shin_type_reference(bazi):
                 f"差分={_format_ratio_percent(adjusted_ratio.get('delta'))}）"
             ),
             f"補正後五行能量：{_format_energy_distribution(adjusted_energy)}",
-            f"補正根拠：{basis_note}。補正件数={len(adjustments)}、月令調制件数={len(season_adjustments)}",
+            f"补正依据：{basis_note}。补正件数={len(adjustments)}、月令调制件数={len(season_adjustments)}",
+            f"制化裁決補正明細：{_format_adjustment_reference(adjustments)}",
         ])
     else:
         lines.append("制化裁決補正後参考：无")
