@@ -231,14 +231,14 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
       flowYear: payload.flowYear,
       flowMonths: payload.flowMonths,
       flowMonth: payload.flowMonth,
-      flowDays: EMPTY_FLOW_ITEMS,
-      flowDay: null,
+      flowDays: payload.flowDays,
+      flowDay: payload.flowDay,
       selectedMonthIndex: payload.selectedMonthIndex ?? 0,
-      selectedDayIndex: 0,
+      selectedDayIndex: payload.selectedDayIndex ?? 0,
     }));
     setSelectedYear(payload.flowYearValue);
     setSelectedMonthIndex(payload.selectedMonthIndex ?? 0);
-    setSelectedDayIndex(0);
+    setSelectedDayIndex(payload.selectedDayIndex ?? 0);
   };
 
   const loadMonthSelection = async (year, monthIndex) => {

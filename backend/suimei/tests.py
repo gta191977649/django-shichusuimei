@@ -248,8 +248,11 @@ class SuimeiViewResponseTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["flow_year_value"], 2026)
         self.assertIn("flow_year", payload)
+        self.assertEqual(payload["flow_year"]["kanshi"], "丙午")
         self.assertIn("flow_months", payload)
         self.assertIn("flow_days", payload)
+        self.assertTrue(payload["flow_days"]["items"])
+        self.assertEqual(payload["flow_day"], payload["flow_days"]["items"][0])
         self.assertIn("selected_month_index", payload)
         self.assertIn("selected_day_index", payload)
 

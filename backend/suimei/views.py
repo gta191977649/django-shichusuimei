@@ -77,6 +77,10 @@ def _build_nayin(kanshi):
         return ""
 
 
+def _build_flow_year_kanshi(flow_year):
+    return the60HeavenlyEarth[(int(flow_year) - 4) % 60]
+
+
 def _parse_bool(value):
     if isinstance(value, bool):
         return value
@@ -278,9 +282,8 @@ def _resolve_flow_year(current_dt):
 
 def _build_flow_year_snapshot(meishi, flow_year):
     risshun = _build_flow_month_term_dates(flow_year)[0]["date"]
-    reference_dt = datetime.datetime(risshun.year, risshun.month, risshun.day, 12, 0)
-    lunar = cnlunar.Lunar(reference_dt, godType="8char")
-    snapshot = _build_pillar_snapshot(meishi, lunar.year8Char[0], lunar.year8Char[1])
+    kanshi = _build_flow_year_kanshi(flow_year)
+    snapshot = _build_pillar_snapshot(meishi, kanshi[0], kanshi[1])
     snapshot.update(
         {
             "flow_year": flow_year,
