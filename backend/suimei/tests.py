@@ -65,6 +65,64 @@ class ShinTypeRatioTests(TestCase):
         self.assertTrue(same_group)
 
 
+class GoukaAdjustedEnergyTests(TestCase):
+    def build_stub_meishi(self, month):
+        meishi = Meishi.__new__(Meishi)
+        meishi.chishi = ["子", month, "卯", "酉"]
+        meishi.tsukirei = month
+        return meishi
+
+    def build_transform_gouka(self, target="金"):
+        return {
+            "resolved": {
+                "kan": [],
+                "shi": [],
+                "effective_kan": [
+                    {
+                        "type": "干化",
+                        "state": "化成",
+                        "to": target,
+                        "element": ["乙", "庚"],
+                        "score": 100,
+                        "source_type": "干合",
+                    }
+                ],
+                "effective_shi": [],
+            }
+        }
+
+    def test_transformation_gain_is_stronger_when_target_element_is_in_season(self):
+        base_energy = {"木": 100.0, "火": 0.0, "土": 0.0, "金": 0.0, "水": 0.0}
+
+        in_season = self.build_stub_meishi("酉")._build_gouka_adjusted_element_energy(
+            base_energy=base_energy,
+            gouka=self.build_transform_gouka("金"),
+        )
+        out_of_season = self.build_stub_meishi("卯")._build_gouka_adjusted_element_energy(
+            base_energy=base_energy,
+            gouka=self.build_transform_gouka("金"),
+        )
+
+        self.assertGreater(in_season["energy"]["金"], out_of_season["energy"]["金"])
+        in_season_huanyuu = next(item for item in in_season["adjustments"] if item["action"] == "化入")
+        out_of_season_huanyuu = next(item for item in out_of_season["adjustments"] if item["action"] == "化入")
+        self.assertGreater(in_season_huanyuu["season_factor"], out_of_season_huanyuu["season_factor"])
+        self.assertEqual(in_season_huanyuu["season_month"], "酉")
+        self.assertEqual(in_season_huanyuu["season_target"], "金")
+
+    def test_empty_gouka_adjustment_does_not_apply_month_coefficient_again(self):
+        base_energy = {"木": 120.0, "火": 80.0, "土": 60.0, "金": 40.0, "水": 100.0}
+
+        payload = self.build_stub_meishi("卯")._build_gouka_adjusted_element_energy(
+            base_energy=base_energy,
+            gouka={"resolved": {}},
+        )
+
+        self.assertEqual(payload["energy"], base_energy)
+        self.assertEqual(payload["basis"], "gouka_resolved")
+        self.assertEqual(payload["basis_detail"], "gouka_resolved_tsukirei_tempered")
+
+
 class SuimeiViewResponseTests(TestCase):
     def test_query_response_contains_ratio_payload(self):
         ratio = {
@@ -112,9 +170,20 @@ class SuimeiViewResponseTests(TestCase):
         self.assertIn("shi_type_ratio_adjusted", payload)
         self.assertIn("shi_type_adjusted", payload)
         self.assertEqual(payload["element_energy_adjusted"]["basis"], "gouka_resolved")
+        self.assertEqual(
+            payload["element_energy_adjusted"]["basis_detail"],
+            "gouka_resolved_tsukirei_tempered",
+        )
         self.assertEqual(payload["shi_type_ratio_adjusted"]["basis"], "element_energy_gouka_adjusted")
         self.assertEqual(set(payload["element_energy_adjusted"]["energy"].keys()), {"木", "火", "土", "金", "水"})
         self.assertIsInstance(payload["element_energy_adjusted"]["adjustments"], list)
+        season_adjustments = [
+            item for item in payload["element_energy_adjusted"]["adjustments"]
+            if "season_factor" in item
+        ]
+        self.assertTrue(season_adjustments)
+        self.assertIn("season_month", season_adjustments[0])
+        self.assertIn("season_coefficient", season_adjustments[0])
 
     def test_query_response_contains_precision_chart_payload(self):
         with patch("builtins.print"):

@@ -211,6 +211,14 @@ def format_shin_type_reference(bazi):
 
     if adjusted_ratio:
         adjustments = adjusted_energy.get("adjustments", []) if adjusted_energy else []
+        basis_detail = adjusted_energy.get("basis_detail") if adjusted_energy else None
+        season_adjustments = [
+            item for item in adjustments
+            if item.get("season_factor") is not None
+        ]
+        basis_note = "刑・沖・破・害・合化の裁決結果を反映"
+        if basis_detail == "gouka_resolved_tsukirei_tempered":
+            basis_note += "、合意・化成は化神の月令係数で温和に調制"
         lines.extend([
             (
                 f"制化裁決補正後参考：{adjusted_type or '-'}"
@@ -219,7 +227,7 @@ def format_shin_type_reference(bazi):
                 f"差分={_format_ratio_percent(adjusted_ratio.get('delta'))}）"
             ),
             f"補正後五行能量：{_format_energy_distribution(adjusted_energy)}",
-            f"補正根拠：刑・沖・破・害・合化の裁決結果を反映。補正件数={len(adjustments)}",
+            f"補正根拠：{basis_note}。補正件数={len(adjustments)}、月令調制件数={len(season_adjustments)}",
         ])
     else:
         lines.append("制化裁決補正後参考：无")

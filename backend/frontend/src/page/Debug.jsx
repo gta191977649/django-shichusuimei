@@ -411,6 +411,14 @@ export default function Debug({ profile }) {
                       {activeEnergyAdjustments.slice(0, 10).map((item, index) => (
                         <li key={`energy-adjustment-${index}`}>
                           {item.note}（{item.delta > 0 ? "+" : ""}{item.delta.toFixed(2)}）
+                          {item.season_factor ? (
+                            <>
+                              {' '}
+                              月令: {item.season_month}
+                              / 係数: {Number(item.season_coefficient).toFixed(3)}
+                              / 調制: {Number(item.season_factor).toFixed(3)}
+                            </>
+                          ) : null}
                         </li>
                       ))}
                     </ul>

@@ -512,6 +512,18 @@ class Meishi:
             return None
         return target if target in Meishi.gogyo else None
 
+    def _gouka_season_temper(self, target_element):
+        month = getattr(self, "tsukirei", None) or self.chishi[1]
+        coefficient = self.getElementsEnergyMonthConstant(month, target_element)
+        factor = 1 + (coefficient - 1) * 0.35
+        factor = min(1.35, max(0.85, factor))
+        return {
+            "season_month": month,
+            "season_target": target_element,
+            "season_coefficient": round(coefficient, 4),
+            "season_factor": round(factor, 4),
+        }
+
     def _build_gouka_adjusted_element_energy(self, base_energy=None, gouka=None):
         base_energy = base_energy or self._build_five_element_energy()
         adjusted = {element: float(value) for element, value in base_energy.items()}
@@ -531,17 +543,20 @@ class Meishi:
             "剋": 0.08,
         }
 
-        def add_adjustment(item, action, element, delta, note):
+        def add_adjustment(item, action, element, delta, note, season_temper=None):
             if abs(delta) < 0.0001:
                 return
-            adjustments.append({
+            adjustment = {
                 "type": item.get("type"),
                 "state": item.get("state"),
                 "element": element,
                 "delta": round(delta, 4),
                 "action": action,
                 "note": note,
-            })
+            }
+            if season_temper:
+                adjustment.update(season_temper)
+            adjustments.append(adjustment)
 
         def score_strength(item):
             return (float(item.get("score") or 0) / 100.0) * state_factor.get(item.get("state"), 0.0)
@@ -592,14 +607,16 @@ class Meishi:
 
                 target = self._single_target_element(item.get("to"))
                 if target:
-                    gain = total_bound * 0.5
+                    season_temper = self._gouka_season_temper(target)
+                    gain = total_bound * 0.5 * season_temper["season_factor"]
                     adjusted[target] += gain
                     add_adjustment(
                         item,
                         "合意",
                         target,
                         gain,
-                        f"{item.get('type')}は化成未満のため、化神{target}へ軽微補正",
+                        f"{item.get('type')}は化成未満のため、化神{target}へ月令調制込みで軽微補正",
+                        season_temper,
                     )
 
         # 化成だけは別枠で、元五行の一部を化神へ移す。
@@ -625,7 +642,9 @@ class Meishi:
                 continue
 
             source_type = item.get("source_type")
-            rate = (0.22 if source_type == "干合" else 0.18) * (float(item.get("score") or 0) / 100.0)
+            season_temper = self._gouka_season_temper(target)
+            base_rate = (0.22 if source_type == "干合" else 0.18) * (float(item.get("score") or 0) / 100.0)
+            rate = base_rate * season_temper["season_factor"]
             total_transfer = 0.0
             for element in sorted(set(source_elements)):
                 delta = adjusted[element] * rate
@@ -636,7 +655,8 @@ class Meishi:
                     "化出",
                     element,
                     -delta,
-                    f"{item.get('type')} 化成により{element}から{target}へ{rate:.1%}転化",
+                    f"{item.get('type')} 化成により{element}から{target}へ月令調制込みで{rate:.1%}転化",
+                    season_temper,
                 )
 
             adjusted[target] += total_transfer
@@ -645,13 +665,15 @@ class Meishi:
                 "化入",
                 target,
                 total_transfer,
-                f"{item.get('type')} 化成により化神{target}へ転化",
+                f"{item.get('type')} 化成により化神{target}へ月令調制込みで転化",
+                season_temper,
             )
 
         return {
             "energy": adjusted,
             "adjustments": adjustments,
             "basis": "gouka_resolved",
+            "basis_detail": "gouka_resolved_tsukirei_tempered",
         }
 
     # 五行エネルギー計算
@@ -1402,6 +1424,7 @@ class Meishi:
             "season_energy": self.element_energy["season_energy"],
             "adjustments": adjusted_energy_payload["adjustments"],
             "basis": adjusted_energy_payload["basis"],
+            "basis_detail": adjusted_energy_payload.get("basis_detail"),
         }
 
         self.trend = Daiun(self)
