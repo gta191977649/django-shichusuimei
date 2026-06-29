@@ -29,7 +29,7 @@ def element_type_check(element):
     if element in element_map:
         return element_map[element]
     else:
-        return "未知元素"
+        return "不明要素"
 
 
 def element_season_check(element):
@@ -196,7 +196,40 @@ def format_shin_type_reference(bazi):
     return "\n".join(lines)
 
 
-def build_prompt_from_meishiki(bazi) -> str:
+UNKNOWN_PILLAR_TEXT = "不明"
+UNKNOWN_BIRTH_TIME_TEXT = "時刻不明"
+
+
+def _is_birth_time_unknown(bazi):
+    return bool(getattr(bazi, "birth_time_unknown", False))
+
+
+def _format_birth_label(bazi):
+    if _is_birth_time_unknown(bazi):
+        return f"{bazi.birthdate.strftime('%Y-%m-%d')} {getattr(bazi, 'birth_time_display', UNKNOWN_BIRTH_TIME_TEXT)}"
+    return str(bazi.birthdate)
+
+
+def _format_pillar_reference_line(bazi, index, label):
+    shi_entry = bazi.meisiki["shi"][index]
+    return (
+        f"{label}:{bazi.tenkan[index]}{element_type_check(bazi.tenkan[index])}({bazi.junshi[0][index]})，"
+        f"{bazi.chishi[index]}{element_type_check(bazi.chishi[index])}({bazi.junshi[3][index]}) "
+        f"藏干:["
+        f"{shi_entry['zoukan'][0]['element']}{element_type_check(shi_entry['zoukan'][0]['element'])}({shi_entry['zoukan'][0]['tsuhen']}),"
+        f"{shi_entry['zoukan'][1]['element']}{element_type_check(shi_entry['zoukan'][1]['element'])}({shi_entry['zoukan'][1]['tsuhen']}),"
+        f"{shi_entry['zoukan'][2]['element']}{element_type_check(shi_entry['zoukan'][2]['element'])}({shi_entry['zoukan'][2]['tsuhen']})"
+        "].\n"
+    )
+
+
+def _format_time_pillar_reference_line(bazi):
+    if _is_birth_time_unknown(bazi):
+        return "時柱:不明（出生時刻不明，時柱干支・十神・蔵干はすべて不明として扱います）。\n"
+    return _format_pillar_reference_line(bazi, 3, "时柱")
+
+
+def _legacy_build_prompt_from_meishiki(bazi) -> str:
     """
     Build the exact 'bazi' string that DeepSeek should receive,
     using your own Meishi engine. This is a TEMPLATE—edit to your needs.
@@ -373,6 +406,112 @@ def build_prompt_from_meishiki(bazi) -> str:
     # Send ISO + hints if you don’t have Meishi wired up yet.
     print(prompt_test)
 
+    return prompt_test
+
+
+def build_prompt_from_meishiki(bazi) -> str:
+    gender_label = "男命" if int(bazi.gender) == 1 else "女命"
+    if _is_birth_time_unknown(bazi):
+        user_prompt = (
+            "八字INPUT：{}{}，{}{}，{}{}，時柱不明，（{}），阳历（真太阳时）：{}"
+            .format(
+                bazi.tenkan[0], bazi.chishi[0],
+                bazi.tenkan[1], bazi.chishi[1],
+                bazi.tenkan[2], bazi.chishi[2],
+                gender_label,
+                _format_birth_label(bazi),
+            )
+        )
+    else:
+        user_prompt = (
+            "八字INPUT：{}{}，{}{}，{}{}，{}{}，（{}），阳历（真太阳时）：{}"
+            .format(
+                bazi.tenkan[0], bazi.chishi[0],
+                bazi.tenkan[1], bazi.chishi[1],
+                bazi.tenkan[2], bazi.chishi[2],
+                bazi.tenkan[3], bazi.chishi[3],
+                gender_label,
+                _format_birth_label(bazi),
+            )
+        )
+
+    reference_prompt = (
+        "<辅助信息参考>\n"
+        f"[出生时间]：{getattr(bazi, 'birth_time_display', UNKNOWN_BIRTH_TIME_TEXT if _is_birth_time_unknown(bazi) else bazi.birthdate.strftime('%H:%M'))}"
+    )
+    if _is_birth_time_unknown(bazi):
+        reference_prompt += "（時刻不明。時柱・時柱蔵干・時柱十神、および完全な四柱に依存する細分判断には不確定性があります。）\n"
+    else:
+        reference_prompt += "（已知）\n"
+
+    reference_prompt += (
+        "[八字排盘]：\n"
+        + _format_pillar_reference_line(bazi, 0, "年柱")
+        + _format_pillar_reference_line(bazi, 1, "月柱")
+        + _format_pillar_reference_line(bazi, 2, "日柱")
+        + _format_time_pillar_reference_line(bazi)
+    )
+
+    if _is_birth_time_unknown(bazi):
+        reference_prompt += "[刑冲破害・合化裁决]：出生時刻不明のため、時柱に関わる関係は暫定的に判定しません。時柱を既知の事実として扱わないでください。\n"
+        reference_prompt += "[日主旺衰判断]：出生時刻不明のため、完全な四柱での旺衰・格局細分・制化補正には不確定性があります。年月日三柱を主として辨証し、時柱依存の結論は保留と明記してください。\n"
+    else:
+        reference_prompt += (
+            "[刑冲破害・合化裁决]：{}\n"
+            .format(format_gouka_reference(getattr(bazi, "gouka", {})))
+        )
+        reference_prompt += (
+            "[日主旺衰判断]：{}\n"
+            .format(format_shin_type_reference(bazi))
+        )
+
+    prompt_test = [
+        {
+            "role": "system",
+            "content":
+                "你是一名专业且经验丰富的八字命理学家，用户会提供其八字命盘信息，请根据输入八字命盘进行系统性、条理化、深入分析。"
+                "<解盘描述需求>："
+                "1. 每一个方面(entity)都必须书写为完整的多段落说明，要求内容详细，必须结合命理原理进行论证，并在每个论点中加入【举例说明】（说明该结论从八字哪里看出来、代表什么、为什么这样判断）。"
+                "2. 每个分析必须包含三部分：优点、缺点、化解或改善建议（不得建议佩戴物品）。"
+                "3. 所有判断都要有理有据，使用专业八字术语（如十神、五行、旺衰、格局、合化、刑冲、调候等），说明逻辑推导依据。"
+                "4. 请保持讨论性语气，用专业语言自然、流畅、逻辑清晰。"
+                "5. 每个部分的段落之间请使用换行符转义序列 \\n 进行分段。"
+                "6. 可以参考<辅助信息参考>提供的内容，但请辨证使用，不可照搬。"
+                "7. 输出必须为合法 JSON 格式，并完全符合下方格式模板。"
+                "<输出格式(JSON 模板)>："
+                "["
+                "  {\"entity\": \"性格标签\", \"content\": \"请根据八字写出主核心的人格特质的<关键字>。\"},"
+                "  {\"entity\": \"格局定位\", \"content\": \"八字格局定位，并找出这个人的天赋有哪些（举例说明），1.BUG在哪里（举例说明）2. 日主旺衰情况（注意分析和流通形以及合化带来的影响判断身旺弱）3.调候用神（需判断是否需要，例如太冷或太热\"},"
+                "  {\"entity\": \"八字病药\", \"content\": \"分析命局中‘病’与‘药’（命理结构中不协调的部分）。说明命理上的不自洽点在哪里，用术语解释其成因。再从1.思维方式、2.生活习惯两个角度举例说明表现形式与影响，并提出具体化解方式（不得建议佩戴物品），说明命理依据。\"},"
+                "  {\"entity\": \"性格特点\", \"content\": \"结合日主旺衰与十神配置详细说明命主性格底色、处事风格、价值观。每个性格特征都必须举例说明（例如：日主为庚金、坐寅木，说明外刚内柔等），并说明这种特质带来的优缺点及应对方法。\"},"
+                "  {\"entity\": \"天赋优势\", \"content\": \"请详细描述命主的天赋与潜能。包括1. 擅长的事（举例说明为什么擅长），2. 不擅长的事（说明八字中何处导致），3. 潜在挑战与矛盾点（分析原因），4. 如何运用与发挥自身天赋（附推理过程）。\"},"
+                "  {\"entity\": \"兴趣爱好\", \"content\": \"结合五行偏旺、十神取向、日主特质，推断命主可能的兴趣领域。每个结论都举例说明（例如食伤旺者喜表达艺术类活动），并分析背后的命理依据。\"},"
+                "  {\"entity\": \"适合职业\", \"content\": \"根据十神配置、格局流通、喜忌情况分析命主适合的职业特性（不要写具体职业名）。说明其职业取向形成的命理原因。进一步指出潜在挑战及改进方向。每个判断都需有举例说明与命理依据。\"},"
+                "  {\"entity\": \"家庭方面\", \"content\": \"分析父母星、年支、月支情况，说明1. 父母的性格或状况；2. 与父母的关系；3. 核心矛盾与成长影响。每个结论都要附命理来源说明。\"},"
+                "  {\"entity\": \"姻缘方面\", \"content\": \"结合夫妻宫与夫/妻星详细分析：1. 夫/妻星喜忌；2. 是否能入局（刑冲破害）；3. 夫妻宫坐实与否（解释含义并举例）；4. 官杀/财才是否混杂及影响；5. 感情模式与挑战。每点都要附命理依据与举例说明。\"},"
+                "  {\"entity\": \"伴侣价值观\", \"content\": \"请详细描述伴侣的价值观体系，包括核心信念、行为取向、人际观与人生观。结合夫/妻星与十神分析其思维逻辑与态度，举例说明命理上如何体现（例如：财星旺者重现实）。\"},"
+                "  {\"entity\": \"伴侣情况\", \"content\": \"结合命局与配偶星推断伴侣的外貌、性格、行业倾向、兴趣爱好与出身背景。每个方面必须举例说明命理来源（如官星清纯代表伴侣气质端庄等）。\"},"
+                "  {\"entity\": \"伴侣互动方式\", \"content\": \"结合夫妻宫与夫/妻星综合判断双方沟通模式、生活方式与互动习惯。说明八字中哪些结构显示出这种互动倾向，并举例说明（例如：食神合官者喜以温和交流）。\"}"
+                "]"
+                "<输出要求>："
+                "- 输出必须是 JSON 数组形式（[] 包裹）。"
+                "- 每个 entity 的内容都需包含多段文字，用 \\n 分段。"
+                "- 每一条论述必须详细、有例、有因果说明。"
+                "- 禁止输出 JSON 之外的文字（如“以下是结果”）。"
+                "- 若信息不足，请合理推断但说明依据。"
+        },
+        {"role": "system", "content": reference_prompt},
+        {
+            "role": "system",
+            "content": "请优先参考[刑冲破害・合化裁决]。不得把所有“合”直接当作“化”，必须区分原始检出与裁决后的成立、减力、失效、化成。",
+        },
+        {
+            "role": "system",
+            "content": "分析日主旺衰、格局定位、喜忌与病药时，必须优先参考[日主旺衰判断]中的原局判断、同行/异行比例与制化裁决补正后参考；若自行修正结论，必须说明命理理由。",
+        },
+        {"role": "user", "content": user_prompt},
+    ]
+    print(prompt_test)
     return prompt_test
 
 # 冬季亥子丑月，需火来解冻暖局，见火为吉。

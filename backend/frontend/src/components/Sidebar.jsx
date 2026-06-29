@@ -1,31 +1,27 @@
-// Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import api from "../api";
+import { buildProfilePayload, getProfileBirthTimeState } from "../lib/birthTime";
 
 const emptyForm = {
   id: null,
   name: "",
   date: "",
-  time: "00:00",
+  time: "",
+  birthTimeUnknown: false,
   gender: "M",
 };
 
 const toForm = (profile) => {
-  const [date = "", timeFull = ""] = (profile?.birthDate || "").split("T");
+  const { date, time, birthTimeUnknown } = getProfileBirthTimeState(profile);
   return {
     id: profile?.id || null,
     name: profile?.name || "",
     date,
-    time: timeFull.replace("Z", "").slice(0, 5) || "00:00",
+    time,
+    birthTimeUnknown,
     gender: profile?.gender || "M",
   };
 };
-
-const toPayload = (form) => ({
-  name: form.name.trim(),
-  birthDate: `${form.date}T${form.time || "00:00"}:00Z`,
-  gender: form.gender,
-});
 
 const Sidebar = ({ isVisible, onToggle, setSelectedProfile }) => {
   const [profiles, setProfiles] = useState([]);
@@ -71,10 +67,15 @@ const Sidebar = ({ isVisible, onToggle, setSelectedProfile }) => {
       return;
     }
 
+    if (!form.birthTimeUnknown && !form.time) {
+      setMessage("出生時刻が不明でない場合は時刻を入力してください。");
+      return;
+    }
+
     setLoading(true);
     setMessage("");
     try {
-      const payload = toPayload(form);
+      const payload = buildProfilePayload(form);
       const saved = form.id
         ? await api.patch(`/api/meishiki/${form.id}/`, payload).then((res) => res.data)
         : await api.post("/api/meishiki/", payload).then((res) => res.data);
@@ -113,6 +114,14 @@ const Sidebar = ({ isVisible, onToggle, setSelectedProfile }) => {
     setForm((current) => ({ ...current, [key]: event.target.value }));
   };
 
+  const updateBirthTimeUnknown = (nextValue) => {
+    setForm((current) => ({
+      ...current,
+      birthTimeUnknown: nextValue,
+      time: nextValue ? "" : (current.time || "00:00"),
+    }));
+  };
+
   return (
     <div className="profile-sidebar" style={{ display: isVisible ? "block" : "none" }}>
       <button className="profile-sidebar-close" onClick={onToggle}>
@@ -142,7 +151,23 @@ const Sidebar = ({ isVisible, onToggle, setSelectedProfile }) => {
           </label>
           <label>
             時間
-            <input value={form.time} onChange={updateField("time")} className="profile-input" type="time" />
+            <div className="birth-time-inline">
+              <input
+                value={form.time}
+                onChange={updateField("time")}
+                className="profile-input"
+                type="time"
+                disabled={form.birthTimeUnknown}
+              />
+              <label className="birth-time-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.birthTimeUnknown}
+                  onChange={(event) => updateBirthTimeUnknown(event.target.checked)}
+                />
+                不明
+              </label>
+            </div>
           </label>
           <label>
             性別
@@ -178,7 +203,10 @@ const Sidebar = ({ isVisible, onToggle, setSelectedProfile }) => {
             onClick={() => selectProfile(item)}
           >
             <span>{item.name}</span>
-            <small>{item.birthDate ? item.birthDate.slice(0, 10) : ""}</small>
+            <small>
+              {item.birthDate ? item.birthDate.slice(0, 10) : ""}
+              {item.birthTimeUnknown ? " / 時刻不明" : ""}
+            </small>
           </button>
         ))}
       </div>

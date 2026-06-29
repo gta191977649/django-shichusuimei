@@ -6,6 +6,12 @@ import ReactMarkdown from "react-markdown";
 import html2canvas from "html2canvas";
 import PrecisionMeishikiBoard from "./subpage/PrecisionMeishikiBoard";
 import GoukaAnlysis from "../components/GoukaAnlysis";
+import {
+  buildBirthDateIso,
+  getBirthTimeDisplay,
+  getProfileBirthTimeState,
+  getQueryTimeValue,
+} from "../lib/birthTime";
 import "./PercisionDebug.css";
 
 const getElementColor = (element) => {
@@ -36,14 +42,13 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
   const aiAutoLoadRequestRef = useRef(0);
 
   const initial = useMemo(() => {
-    const iso = profile?.birthDate || "";
-    const [date = "", timePart = ""] = iso.split("T");
-    const time = timePart.replace("Z", "").slice(0, 5);
+    const { date, time, birthTimeUnknown } = getProfileBirthTimeState(profile);
 
     return {
       name: profile?.name || "",
       date,
       time,
+      birthTimeUnknown,
       gender: profile?.gender || "M",
     };
   }, [profile]);
@@ -59,7 +64,9 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
   useEffect(() => {
     const nameChanged = (form.name ?? "").trim() !== (initial.name ?? "");
     const dateChanged =
-      (form.date ?? "") !== (initial.date ?? "") || (form.time ?? "") !== (initial.time ?? "");
+      (form.date ?? "") !== (initial.date ?? "") ||
+      (form.time ?? "") !== (initial.time ?? "") ||
+      Boolean(form.birthTimeUnknown) !== Boolean(initial.birthTimeUnknown);
     const genderChanged = (form.gender ?? "") !== (initial.gender ?? "M");
 
     const dirty = nameChanged || dateChanged || genderChanged;
@@ -72,9 +79,14 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
 
   const onChange = (key) => (e) => setForm((current) => ({ ...current, [key]: e.target.value }));
 
-  const query = ({ date, time, gender }) => {
+  const query = ({ date, time, gender, birthTimeUnknown = false }) => {
     api
-      .post("/api/query", { date, time, gender })
+      .post("/api/query", {
+        date,
+        time: getQueryTimeValue(time, birthTimeUnknown),
+        time_unknown: birthTimeUnknown,
+        gender,
+      })
       .then((res) => res.data)
       .then((data) => {
         setResponse(data);
@@ -89,15 +101,14 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
   const queryProfile = (targetProfile = profile) => {
     if (!targetProfile?.birthDate || !targetProfile?.gender) return;
 
-    const [date, timeFull = ""] = targetProfile.birthDate.split("T");
-    const time = timeFull.replace("Z", "").slice(0, 5);
+    const { date, time, birthTimeUnknown } = getProfileBirthTimeState(targetProfile);
     const gender = targetProfile.gender === "M" ? 1 : 0;
 
-    query({ date, time, gender });
+    query({ date, time, gender, birthTimeUnknown });
   };
 
   const queryForm = () => {
-    if (!form.date || !form.time || !form.gender) {
+    if (!form.date || (!form.birthTimeUnknown && !form.time) || !form.gender) {
       alert("誕生日・時間・性別を入力してください。");
       return;
     }
@@ -105,6 +116,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
     query({
       date: form.date,
       time: form.time,
+      birthTimeUnknown: Boolean(form.birthTimeUnknown),
       gender: form.gender === "M" ? 1 : 0,
     });
   };
@@ -191,8 +203,8 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
   };
 
   const buildBirthDate = () => {
-    if (form.date && form.time) return `${form.date}T${form.time}:00Z`;
-    if (initial.date && initial.time) return `${initial.date}T${initial.time}:00Z`;
+    if (form.date) return buildBirthDateIso(form, profile?.birthDate ?? "");
+    if (initial.date) return buildBirthDateIso(initial, profile?.birthDate ?? "");
     return profile?.birthDate ?? "";
   };
 
@@ -203,10 +215,14 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
       const initialName = initial.name ?? "";
       const initialDate = initial.date ?? "";
       const initialTime = initial.time ?? "";
+      const initialBirthTimeUnknown = Boolean(initial.birthTimeUnknown);
       const initialGender = initial.gender ?? "M";
 
       const nameChanged = (form.name ?? "").trim() !== initialName;
-      const dateChanged = (form.date ?? "") !== initialDate || (form.time ?? "") !== initialTime;
+      const dateChanged =
+        (form.date ?? "") !== initialDate ||
+        (form.time ?? "") !== initialTime ||
+        Boolean(form.birthTimeUnknown) !== initialBirthTimeUnknown;
       const genderChanged = (form.gender ?? "") !== initialGender;
 
       if (!nameChanged && !dateChanged && !genderChanged) return;
@@ -217,6 +233,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
             name: form.name,
             birthDate: buildBirthDate(),
             gender: form.gender,
+            birthTimeUnknown: Boolean(form.birthTimeUnknown),
           })
           .then((r) => r.data);
 
@@ -227,6 +244,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
       if (profile?.id) {
         const patchData = {};
         if (dateChanged) patchData.birthDate = buildBirthDate();
+        if (dateChanged) patchData.birthTimeUnknown = Boolean(form.birthTimeUnknown);
         if (genderChanged) patchData.gender = form.gender;
 
         if (Object.keys(patchData).length > 0) {
@@ -239,6 +257,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
             name: form.name,
             birthDate: buildBirthDate(),
             gender: form.gender,
+            birthTimeUnknown: Boolean(form.birthTimeUnknown),
           })
           .then((r) => r.data);
         setSelectedProfile(created);
@@ -272,6 +291,14 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
 
     const yearLabel = eraYear === 1 ? "元" : eraYear;
     return `${era}${yearLabel}年${month}月${day}日`;
+  };
+
+  const updateBirthTimeUnknown = (nextValue) => {
+    setForm((current) => ({
+      ...current,
+      birthTimeUnknown: nextValue,
+      time: nextValue ? "" : (current.time || "00:00"),
+    }));
   };
 
   const reasonCards = useMemo(() => {
@@ -881,7 +908,7 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
                   type="button"
                   className="pd-action-button"
                   onClick={queryForm}
-                  disabled={!form.date || !form.time}
+                  disabled={!form.date || (!form.birthTimeUnknown && !form.time)}
                 >
                   鑑定
                 </button>
@@ -946,7 +973,16 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
                     onChange={onChange("time")}
                     className="table-input pd-control-input"
                     type="time"
+                    disabled={form.birthTimeUnknown}
                   />
+                  <label className="birth-time-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={form.birthTimeUnknown}
+                      onChange={(event) => updateBirthTimeUnknown(event.target.checked)}
+                    />
+                    不明
+                  </label>
                   <span className="pd-inline-note">（真太陽時）</span>
                 </div>
               </div>
@@ -984,7 +1020,8 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
                     data={response}
                     requestInput={{
                       date: form.date,
-                      time: form.time,
+                      time: getQueryTimeValue(form.time, form.birthTimeUnknown),
+                      birthTimeUnknown: Boolean(form.birthTimeUnknown),
                       gender: form.gender === "M" ? 1 : 0,
                     }}
                   />
@@ -1076,7 +1113,9 @@ export default function PercisionDebug({ profile, setSelectedProfile, isAuthenti
             </div>
             <div className="pd-export-meta-row">
               <span className="pd-export-meta-label">時間</span>
-              <span className="pd-export-meta-value">{form.time || "-"} （真太陽時）</span>
+              <span className="pd-export-meta-value">
+                {getBirthTimeDisplay(form.time, form.birthTimeUnknown) || "-"} （真太陽時）
+              </span>
             </div>
             <div className="pd-export-meta-row">
               <span className="pd-export-meta-label">性別</span>

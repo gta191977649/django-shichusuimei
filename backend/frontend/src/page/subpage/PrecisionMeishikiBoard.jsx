@@ -147,6 +147,7 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
       const res = await api.post("/api/precision-flow", {
         date: requestInput.date,
         time: requestInput.time,
+        time_unknown: requestInput.birthTimeUnknown,
         gender: requestInput.gender,
         year,
         month_index: monthIndex,

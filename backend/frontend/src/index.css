@@ -542,6 +542,32 @@ rb, rt {
   background: #fff;
 }
 
+.birth-time-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.birth-time-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.birth-time-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.birth-time-checkbox input {
+  margin: 0;
+}
+
 .profile-actions {
   display: flex;
   flex-wrap: wrap;

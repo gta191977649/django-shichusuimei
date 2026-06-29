@@ -333,18 +333,15 @@
 .pd-overview-head,
 .pd-overview-side {
   background: #ccffcc;
-  min-height: 34px;
 }
 
 .pd-overview-side-top {
   align-items: flex-start;
-  padding-top: 8px;
 }
 
 .pd-overview-star {
   padding-top: 0;
   padding-bottom: 0;
-  min-height: 62px;
 }
 
 .pd-overview-main {
@@ -366,7 +363,6 @@
   min-height: 52px;
   margin: 0 auto;
   letter-spacing: 0;
-  font-size: 12px;
   line-height: 1.05;
   font-weight: 700;
   font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",

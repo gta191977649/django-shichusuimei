@@ -15,6 +15,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import DaiunTrend from '../components/DaiunTrend';
 import Badge from 'react-bootstrap/Badge';
+import { getProfileBirthTimeState, getQueryTimeValue } from '../lib/birthTime';
 
 
 export default function Debug({ profile }) {
@@ -24,6 +25,7 @@ export default function Debug({ profile }) {
   const [name,setName] = useState("")
   const [date,setDate] = useState("1997-01-01")
   const [time,setTime] = useState("00:00")
+  const [birthTimeUnknown, setBirthTimeUnknown] = useState(false)
   const [gender,setGender] = useState(1)
   const [response,setResponse] = useState()
   const [activeTab, setActiveTab] = useState('meishiki');
@@ -116,7 +118,8 @@ export default function Debug({ profile }) {
 
   const query = (payload = {
     date: date,
-    time: time,
+    time: getQueryTimeValue(time, birthTimeUnknown),
+    time_unknown: birthTimeUnknown,
     gender: gender,
   }) => {
     api
@@ -133,28 +136,41 @@ export default function Debug({ profile }) {
   useEffect(() => {
     if (!profile?.birthDate) return;
 
-    const [profileDate, timeFull = ""] = profile.birthDate.split("T");
-    const profileTime = timeFull.replace("Z", "").slice(0, 5) || "00:00";
+    const { date: profileDate, time: profileTime, birthTimeUnknown: profileBirthTimeUnknown } =
+      getProfileBirthTimeState(profile);
     const profileGender = profile.gender === "M" ? 1 : 0;
     const payload = {
       date: profileDate,
-      time: profileTime,
+      time: getQueryTimeValue(profileTime, profileBirthTimeUnknown),
+      time_unknown: profileBirthTimeUnknown,
       gender: profileGender,
     };
 
     setName(profile.name || "")
     setDate(profileDate)
     setTime(profileTime)
+    setBirthTimeUnknown(profileBirthTimeUnknown)
     setGender(profileGender)
     query(payload)
   }, [profile])
 
   const handleSubmit = () => {
-    if (date && time && gender !== null && gender !== undefined) {
+    if (date && (birthTimeUnknown || time) && gender !== null && gender !== undefined) {
       console.log(date,time,gender)
       query()
     }else{
       alert("必須項目を確認してください")
+    }
+  }
+
+  const updateBirthTimeUnknown = (nextValue) => {
+    setBirthTimeUnknown(nextValue)
+    if (nextValue) {
+      setTime("")
+      return
+    }
+    if (!time) {
+      setTime("00:00")
     }
   }
 
@@ -196,7 +212,16 @@ export default function Debug({ profile }) {
                 className='table-input'
                 type="time"
                 style={{ flex: "1 1 auto", minWidth: 0 }}
+                disabled={birthTimeUnknown}
               />
+              <label className="birth-time-checkbox">
+                <input
+                  type="checkbox"
+                  checked={birthTimeUnknown}
+                  onChange={e => updateBirthTimeUnknown(e.target.checked)}
+                />
+                不明
+              </label>
               <span style={{ color: "#000", fontWeight: "bold", whiteSpace: "nowrap" }}>（真太陽時）</span>
             </div>
           </td>

@@ -138,6 +138,28 @@ class SuimeiViewResponseTests(TestCase):
         self.assertIn("flow_days", payload["precision_chart"])
         self.assertIn("flow_day", payload["precision_chart"])
 
+    def test_query_response_masks_time_pillar_when_birth_time_is_unknown(self):
+        with patch("builtins.print"):
+            response = self.client.post(
+                "/api/query",
+                {
+                    "date": "1997-02-14",
+                    "time": "",
+                    "time_unknown": True,
+                    "gender": 1,
+                },
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["birth_time_unknown"])
+        self.assertEqual(payload["birth_time_display"], "時刻不明")
+        self.assertEqual(payload["tenkan"][3], "不明")
+        self.assertEqual(payload["chishi"][3], "不明")
+        self.assertEqual(payload["junshi"]["tenkan"][3], "不明")
+        self.assertEqual(payload["precision_chart"]["natal"]["time"]["tenkan"], "不明")
+
     def test_precision_flow_endpoint_returns_selectable_year_month_day_payload(self):
         with patch("builtins.print"):
             response = self.client.post(
@@ -341,7 +363,7 @@ class PromptBuilderTests(TestCase):
             messages = build_prompt_from_meishiki(meishi)
         serialized = "\n".join(str(message["content"]) for message in messages)
 
-        self.assertIn("刑沖破害", serialized)
+        self.assertIn("刑冲破害・合化裁决", serialized)
         self.assertIn("Chart-level裁决", serialized)
         self.assertIn("不得把所有“合”直接当作“化”", serialized)
 
@@ -353,11 +375,24 @@ class PromptBuilderTests(TestCase):
             messages = build_prompt_from_meishiki(meishi)
         serialized = "\n".join(str(message["content"]) for message in messages)
 
-        self.assertIn("日主旺衰判定", serialized)
+        self.assertIn("日主旺衰判断", serialized)
         self.assertIn("原局判定", serialized)
         self.assertIn("同行", serialized)
         self.assertIn("異行", serialized)
         self.assertIn("制化裁決補正後参考", serialized)
+    def test_prompt_marks_time_pillar_unknown_when_birth_time_is_unknown(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+        meishi.birth_time_unknown = True
+        meishi.birth_time_display = "時刻不明"
+
+        with patch("builtins.print"):
+            messages = build_prompt_from_meishiki(meishi)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("時柱不明", serialized)
+        self.assertIn("時柱を既知の事実として扱わないでください", serialized)
+
 class PromptBuilderLanguageTests(TestCase):
     def test_prompt_does_not_force_traditional_chinese_output(self):
         with patch("builtins.print"):

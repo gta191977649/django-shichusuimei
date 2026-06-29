@@ -12,6 +12,7 @@ class Meishiki(models.Model):
     name = models.CharField(max_length=120)
     description = models.TextField(default="")
     birthDate = models.DateTimeField()
+    birthTimeUnknown = models.BooleanField(default=False)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES,default='M')
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

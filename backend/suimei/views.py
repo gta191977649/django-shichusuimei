@@ -66,11 +66,75 @@ NAYIN_NAMES = [
 ]
 
 
+UNKNOWN_PILLAR_TEXT = "不明"
+UNKNOWN_BIRTH_TIME_TEXT = "時刻不明"
+
+
 def _build_nayin(kanshi):
     try:
         return NAYIN_NAMES[the60HeavenlyEarth.index(kanshi) // 2]
     except ValueError:
         return ""
+
+
+def _parse_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _apply_birth_time_context(meishi, birth_time_unknown=False, birth_time_display=None):
+    meishi.birth_time_unknown = bool(birth_time_unknown)
+    meishi.birth_time_display = birth_time_display or (
+        UNKNOWN_BIRTH_TIME_TEXT if meishi.birth_time_unknown else meishi.birthdate.strftime("%H:%M")
+    )
+    return meishi
+
+
+def _build_unknown_pillar_snapshot():
+    return {
+        "kanshi": UNKNOWN_PILLAR_TEXT,
+        "tenkan": UNKNOWN_PILLAR_TEXT,
+        "chishi": UNKNOWN_PILLAR_TEXT,
+        "kan_tsuhen": UNKNOWN_PILLAR_TEXT,
+        "shi_tsuhen": UNKNOWN_PILLAR_TEXT,
+        "zoukan": [{"element": UNKNOWN_PILLAR_TEXT, "tsuhen": UNKNOWN_PILLAR_TEXT} for _ in range(3)],
+        "seiun": UNKNOWN_PILLAR_TEXT,
+        "jizuo": UNKNOWN_PILLAR_TEXT,
+        "kubou": UNKNOWN_PILLAR_TEXT,
+        "nayin": UNKNOWN_PILLAR_TEXT,
+    }
+
+
+def _mask_time_pillar_payload(data):
+    if not data.get("birth_time_unknown"):
+        return data
+
+    for key in ("tenkan", "chishi", "juniunshi"):
+        values = data.get(key)
+        if isinstance(values, list) and len(values) >= 4:
+            values[3] = UNKNOWN_PILLAR_TEXT
+
+    junshi = data.get("junshi")
+    if isinstance(junshi, dict):
+        for key in ("tenkan", "zoukan_honki", "zoukan_chuki", "zoukan_yoki"):
+            values = junshi.get(key)
+            if isinstance(values, list) and len(values) >= 4:
+                values[3] = UNKNOWN_PILLAR_TEXT
+
+    zoukan = data.get("zoukan")
+    if isinstance(zoukan, list) and len(zoukan) >= 4:
+        zoukan[3] = [UNKNOWN_PILLAR_TEXT, UNKNOWN_PILLAR_TEXT, UNKNOWN_PILLAR_TEXT]
+
+    precision_chart = data.get("precision_chart")
+    if isinstance(precision_chart, dict):
+        natal = precision_chart.get("natal")
+        if isinstance(natal, dict):
+            natal["time"] = _build_unknown_pillar_snapshot()
+
+    return data
 
 
 def _build_zoukan_payload(meishi, branch):
@@ -106,7 +170,10 @@ def _build_pillar_snapshot(meishi, stem, branch):
 
 def _build_meishi_from_payload(payload):
     date_str = payload.get("date")
-    time_str = payload.get("time")
+    birth_time_unknown = _parse_bool(payload.get("time_unknown") or payload.get("birthTimeUnknown"))
+    time_str = payload.get("time") or "00:00"
+    if birth_time_unknown:
+        time_str = "00:00"
     gender = int(payload.get("gender"))
 
     date_parts = [int(part) for part in date_str.split("-")]
@@ -118,7 +185,11 @@ def _build_meishi_from_payload(payload):
         hour=time_parts[0],
         minute=time_parts[1],
     )
-    return Meishi(date_time_obj, gender)
+    return _apply_birth_time_context(
+        Meishi(date_time_obj, gender),
+        birth_time_unknown=birth_time_unknown,
+        birth_time_display=UNKNOWN_BIRTH_TIME_TEXT if birth_time_unknown else time_str,
+    )
 
 
 def _find_active_daiun_index(year_table, current_year):
@@ -377,8 +448,13 @@ def _build_precision_chart_payload(meishi):
             "year": _build_pillar_snapshot(meishi, meishi.tenkan[0], meishi.chishi[0]),
             "month": _build_pillar_snapshot(meishi, meishi.tenkan[1], meishi.chishi[1]),
             "day": _build_pillar_snapshot(meishi, meishi.tenkan[2], meishi.chishi[2]),
-            "time": _build_pillar_snapshot(meishi, meishi.tenkan[3], meishi.chishi[3]),
+            "time": (
+                _build_unknown_pillar_snapshot()
+                if getattr(meishi, "birth_time_unknown", False)
+                else _build_pillar_snapshot(meishi, meishi.tenkan[3], meishi.chishi[3])
+            ),
         },
+        "birth_time_unknown": getattr(meishi, "birth_time_unknown", False),
     }
 
 
@@ -439,7 +515,14 @@ class BunsekiView(APIView):
                 hour=time_parts[0],
                 minute=time_parts[1],
             )
-            bazi = Meishi(date_time_obj, int(gender))
+            birth_time_unknown = bool(getattr(meishiki, "birthTimeUnknown", False))
+            bazi = _apply_birth_time_context(
+                Meishi(date_time_obj, int(gender)),
+                birth_time_unknown=birth_time_unknown,
+                birth_time_display=(
+                    UNKNOWN_BIRTH_TIME_TEXT if birth_time_unknown else f"{time_parts[0]:02d}:{time_parts[1]:02d}"
+                ),
+            )
 
             try:
                 messages = build_prompt_from_meishiki(bazi)
@@ -492,17 +575,19 @@ class SuimeiView(APIView):
         data = {
             "gender": gender,
             "birth": meishi.birthdate,
-            "tenkan": meishi.tenkan,
-            "chishi": meishi.chishi,
+            "birth_time_unknown": getattr(meishi, "birth_time_unknown", False),
+            "birth_time_display": getattr(meishi, "birth_time_display", meishi.birthdate.strftime("%H:%M")),
+            "tenkan": list(meishi.tenkan),
+            "chishi": list(meishi.chishi),
             "kubou": meishi.kubou,
             "junshi": {
-                "tenkan": meishi.junshi[0],
-                "zoukan_honki": meishi.junshi[3],
-                "zoukan_chuki": meishi.junshi[2],
-                "zoukan_yoki": meishi.junshi[1],
+                "tenkan": list(meishi.junshi[0]),
+                "zoukan_honki": list(meishi.junshi[3]),
+                "zoukan_chuki": list(meishi.junshi[2]),
+                "zoukan_yoki": list(meishi.junshi[1]),
             },
-            "juniunshi": meishi.juniunshi,
-            "zoukan": meishi.zoukan,
+            "juniunshi": list(meishi.juniunshi),
+            "zoukan": [list(item) for item in meishi.zoukan],
             "shi_type": meishi.shin_type,
             "shi_type_ratio": meishi.shin_type_ratio,
             "shi_type_adjusted": meishi.shin_type_adjusted,
@@ -534,6 +619,7 @@ class SuimeiView(APIView):
             },
             "precision_chart": _build_precision_chart_payload(meishi),
         }
+        data = _mask_time_pillar_payload(data)
         print(meishi.daiunList)
 
         return Response(data, status=status.HTTP_200_OK)
