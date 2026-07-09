@@ -1,11 +1,10 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api, { ACCESS_TOKEN, refreshAccessToken } from "../api";
 import Modal from "react-bootstrap/Modal";
 import Tab from "react-bootstrap/Tab";
 import Tabs from "react-bootstrap/Tabs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Virtuoso } from "react-virtuoso";
 import html2canvas from "html2canvas";
 import PrecisionMeishikiBoard from "./subpage/PrecisionMeishikiBoard";
 import GoukaAnlysis from "../components/GoukaAnlysis";
@@ -16,12 +15,19 @@ import {
   getProfileBirthTimeState,
   getQueryTimeValue,
 } from "../lib/birthTime";
+import ChatMessageList from "./chat/ChatMessageList";
+import {
+  mergeMessagesById,
+  removeChatMessagesById,
+  replaceChatMessageById,
+} from "./chat/chatMessageUtils";
+import { usePaginatedChatMessages } from "./chat/usePaginatedChatMessages";
 import "./PercisionDebug.css";
 
 const DEFAULT_CHAT_SESSION_TITLE = "新規会話";
 const MAX_CHAT_SESSION_TITLE_LENGTH = 30;
 const CHAT_PAGE_SIZE = 40;
-const CHAT_VIRTUOSO_BASE_INDEX = 100000;
+const CHAT_BOTTOM_THRESHOLD = 150;
 
 const getElementColor = (element) => {
   const colorTable = {
@@ -50,36 +56,6 @@ const MarkdownContent = ({ children }) => (
     <ReactMarkdown remarkPlugins={[remarkGfm]}>{children || ""}</ReactMarkdown>
   </div>
 );
-
-const ChatReasoningDetails = memo(function ChatReasoningDetails({ reasoning }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  if (!reasoning) return null;
-
-  return (
-    <details className="pd-chat-reasoning" open={isOpen} onToggle={(event) => setIsOpen(event.currentTarget.open)}>
-      <summary>思考過程 / Reference</summary>
-      {isOpen ? (
-        <div className="pd-chat-reasoning-body display-linebreak">
-          <MarkdownContent>{reasoning}</MarkdownContent>
-        </div>
-      ) : null}
-    </details>
-  );
-});
-
-const ChatMessageItem = memo(function ChatMessageItem({ message }) {
-  return (
-    <div className={`pd-chat-message pd-chat-message-${message.role}`}>
-      <div className="pd-chat-role">{message.role === "user" ? "あなた" : "AI"}</div>
-      <div className="pd-chat-bubble display-linebreak">
-        <MarkdownContent>{message.content}</MarkdownContent>
-        {message.role === "assistant" ? <ChatReasoningDetails reasoning={message.reasoning} /> : null}
-        {message.typing ? <span className="pd-chat-cursor" aria-hidden="true"></span> : null}
-      </div>
-    </div>
-  );
-});
 
 const normalizeChatMessage = (message) => {
   if (!message || typeof message !== "object") return null;
@@ -140,16 +116,12 @@ export default function PercisionDebug({
   const [chatInput, setChatInput] = useState("");
   const [chatSessions, setChatSessions] = useState([]);
   const [activeChatSessionId, setActiveChatSessionId] = useState(null);
-  const [activeChatMessages, setActiveChatMessages] = useState([]);
-  const [chatHasMoreOlder, setChatHasMoreOlder] = useState(false);
-  const [chatLoadingOlder, setChatLoadingOlder] = useState(false);
-  const [chatMessagesReady, setChatMessagesReady] = useState(false);
-  const [chatFirstItemIndex, setChatFirstItemIndex] = useState(CHAT_VIRTUOSO_BASE_INDEX);
   const [chatAtBottom, setChatAtBottom] = useState(true);
   const [chatStatus, setChatStatus] = useState(null);
   const [chatStorageStatus, setChatStorageStatus] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
   const [chatTyping, setChatTyping] = useState(false);
+  const [hasUnreadLatest, setHasUnreadLatest] = useState(false);
   const [isChatFullscreen, setIsChatFullscreen] = useState(false);
   const [isProfileBaziOpen, setIsProfileBaziOpen] = useState(false);
   const [selectedElementInsight, setSelectedElementInsight] = useState(null);
@@ -166,8 +138,12 @@ export default function PercisionDebug({
   const fullscreenChatInputRef = useRef(null);
   const aiAutoLoadRequestRef = useRef(0);
   const activeChatSessionIdRef = useRef(null);
+  const chatAtBottomRef = useRef(true);
   const chatStreamBufferRef = useRef({ sessionId: null, content: "", reasoning: "" });
   const chatStreamFlushFrameRef = useRef(null);
+  const chatStreamAbortRef = useRef(null);
+  const streamingAssistantMessageIdRef = useRef(null);
+  const streamingUserMessageIdRef = useRef(null);
   const shouldForceScrollToBottomRef = useRef(false);
   const shouldAutoFollowTypingRef = useRef(false);
 
@@ -199,10 +175,27 @@ export default function PercisionDebug({
 
   const buildApiUrl = (path) => `${api.defaults.baseURL || ""}${path}`;
   const chatEnabled = Boolean(isAuthenticated && isAdmin && authUserId);
-  const chatStorageEnabled = false;
 
   const sortChatSessions = (sessions) =>
     [...sessions].sort((left, right) => Date.parse(right.updatedAt || 0) - Date.parse(left.updatedAt || 0));
+  const sortedChatSessions = useMemo(() => sortChatSessions(chatSessions), [chatSessions]);
+  const activeChatSession = useMemo(
+    () => sortedChatSessions.find((session) => session.id === activeChatSessionId) || null,
+    [activeChatSessionId, sortedChatSessions]
+  );
+
+  const resetChatViewportState = () => {
+    chatAtBottomRef.current = true;
+    setChatAtBottom(true);
+    setHasUnreadLatest(false);
+    shouldForceScrollToBottomRef.current = false;
+    shouldAutoFollowTypingRef.current = false;
+  };
+
+  const clearStreamingMessageRefs = () => {
+    streamingAssistantMessageIdRef.current = null;
+    streamingUserMessageIdRef.current = null;
+  };
 
   const updateChatSessionSummary = (sessionId, updater) => {
     let nextSession = null;
@@ -223,30 +216,10 @@ export default function PercisionDebug({
     if (!normalizedSession) return null;
 
     setChatSessions((current) => sortChatSessions([normalizedSession, ...current]));
-    setActiveChatMessages([]);
-    setChatHasMoreOlder(false);
-    setChatLoadingOlder(false);
-    setChatMessagesReady(false);
-    setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
-    setChatAtBottom(true);
+    resetChatViewportState();
     setActiveChatSessionId(normalizedSession.id);
     setChatInput("");
     setChatStatus(null);
-    return normalizedSession;
-  };
-
-  const mergeChatSessionSummary = (nextSession) => {
-    const normalizedSession = normalizeChatSession(nextSession);
-    if (!normalizedSession) return null;
-
-    setChatSessions((current) => {
-      const existingSession = current.find((session) => session.id === normalizedSession.id);
-      const remaining = current.filter((session) => session.id !== normalizedSession.id);
-      return sortChatSessions([
-        { ...normalizedSession, draftInput: existingSession?.draftInput || "" },
-        ...remaining,
-      ]);
-    });
     return normalizedSession;
   };
 
@@ -262,19 +235,40 @@ export default function PercisionDebug({
     return Array.isArray(data) ? data.map(normalizeChatSession).filter(Boolean) : [];
   };
 
-  const loadRemoteChatMessages = async (sessionId, { beforeId = null, limit = CHAT_PAGE_SIZE } = {}) => {
+  const loadRemoteChatMessages = useCallback(async (sessionId, { beforeId = null, limit = CHAT_PAGE_SIZE, signal } = {}) => {
     const { data } = await api.get(`/api/gpt/chat/sessions/${sessionId}/messages`, {
+      signal,
       params: {
         limit,
         ...(beforeId ? { before_id: beforeId } : {}),
       },
     });
     return normalizeChatMessagePage(data);
-  };
+  }, []);
 
   const deleteRemoteChatSession = async (sessionId) => {
     await api.delete(`/api/gpt/chat/sessions/${sessionId}`);
   };
+
+  const {
+    messages: activeChatMessages,
+    setMessages: setActiveChatMessages,
+    hasMore: chatHasMoreOlder,
+    loadingInitial: chatLoadingInitial,
+    loadingOlder: chatLoadingOlder,
+    isReady: chatMessagesReady,
+    error: chatHistoryError,
+    setError: setChatHistoryError,
+    firstItemIndex: chatFirstItemIndex,
+    loadOlderMessages,
+    reload: reloadChatMessages,
+  } = usePaginatedChatMessages({
+    sessionId: activeChatSessionId,
+    enabled: chatEnabled,
+    messageCount: activeChatSession?.messageCount,
+    pageSize: CHAT_PAGE_SIZE,
+    loadPage: loadRemoteChatMessages,
+  });
 
   const flushChatStreamBuffer = () => {
     if (chatStreamFlushFrameRef.current) {
@@ -288,24 +282,25 @@ export default function PercisionDebug({
       chatStreamBufferRef.current = { sessionId: null, content: "", reasoning: "" };
       return;
     }
+    if (!streamingAssistantMessageIdRef.current) {
+      chatStreamBufferRef.current = { sessionId: null, content: "", reasoning: "" };
+      return;
+    }
 
     const contentDelta = pending.content;
     const reasoningDelta = pending.reasoning;
     chatStreamBufferRef.current = { sessionId: null, content: "", reasoning: "" };
 
     setActiveChatMessages((current) => {
-      if (!current.length) return current;
-      const lastIndex = current.length - 1;
-      const lastMessage = current[lastIndex];
-      if (!lastMessage || lastMessage.role !== "assistant") return current;
-
-      const nextMessages = [...current];
-      nextMessages[lastIndex] = {
-        ...lastMessage,
-        content: `${lastMessage.content || ""}${contentDelta}`,
-        reasoning: `${lastMessage.reasoning || ""}${reasoningDelta}`,
-      };
-      return nextMessages;
+      return replaceChatMessageById(current, streamingAssistantMessageIdRef.current, (message) =>
+        message
+          ? {
+              ...message,
+              content: `${message.content || ""}${contentDelta}`,
+              reasoning: `${message.reasoning || ""}${reasoningDelta}`,
+            }
+          : message
+      );
     });
   };
 
@@ -337,12 +332,17 @@ export default function PercisionDebug({
 
     if (sessionId === activeChatSessionIdRef.current) {
       setActiveChatMessages((current) => {
-        const nextMessages = current.slice(0, Math.max(0, current.length - 2));
-        if (userMessage) nextMessages.push(userMessage);
-        if (assistantMessage) nextMessages.push(assistantMessage);
-        return nextMessages;
+        const nextMessages = removeChatMessagesById(current, [
+          streamingUserMessageIdRef.current,
+          streamingAssistantMessageIdRef.current,
+        ]);
+        return mergeMessagesById(nextMessages, [userMessage, assistantMessage].filter(Boolean), {
+          position: "append",
+        }).messages;
       });
     }
+
+    clearStreamingMessageRefs();
 
     updateChatSessionSummary(sessionId, (session) => ({
       ...session,
@@ -401,13 +401,14 @@ export default function PercisionDebug({
     return pending;
   };
 
-  const readChatStream = async ({ question, chartContext, sessionId, accessToken, retry = true }) => {
+  const readChatStream = async ({ question, chartContext, sessionId, accessToken, signal, retry = true }) => {
     const response = await fetch(buildApiUrl(`/api/gpt/chat/sessions/${sessionId}/stream`), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
+      signal,
       body: JSON.stringify({
         question,
         chart_context: chartContext,
@@ -421,6 +422,7 @@ export default function PercisionDebug({
         chartContext,
         sessionId,
         accessToken: nextAccessToken,
+        signal,
         retry: false,
       });
     }
@@ -449,20 +451,23 @@ export default function PercisionDebug({
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
+        buffer += decoder.decode(value, { stream: true });
+        buffer = processSseEventBuffer(buffer, (event) => applyChatStreamEvent(sessionId, event));
+      }
+
+      buffer += decoder.decode();
       buffer = processSseEventBuffer(buffer, (event) => applyChatStreamEvent(sessionId, event));
+      if (buffer.trim()) {
+        throw new Error("AI会話ストリームの解析に失敗しました。");
+      }
+    } finally {
+      setChatTyping(false);
     }
-
-    buffer += decoder.decode();
-    buffer = processSseEventBuffer(buffer, (event) => applyChatStreamEvent(sessionId, event));
-    if (buffer.trim()) {
-      throw new Error("AI会話ストリームの解析に失敗しました。");
-    }
-    setChatTyping(false);
   };
 
   const readAIInterpretationStream = async ({ meishikiId, force = false, accessToken, retry = true }) => {
@@ -552,25 +557,24 @@ export default function PercisionDebug({
     setForm(initial);
   }, [initial]);
 
-  const sortedChatSessions = useMemo(() => sortChatSessions(chatSessions), [chatSessions]);
-  const activeChatSession = useMemo(
-    () => sortedChatSessions.find((session) => session.id === activeChatSessionId) || null,
-    [activeChatSessionId, sortedChatSessions]
-  );
-  const visibleChatMessages = useMemo(() => {
-    const messages = activeChatMessages;
-    if (!chatTyping || messages.length === 0) return messages;
-
-    return messages.map((message, index) =>
-      index === messages.length - 1 && message.role === "assistant" ? { ...message, typing: true } : message
-    );
-  }, [activeChatMessages, chatTyping]);
-
   useEffect(() => {
     activeChatSessionIdRef.current = activeChatSessionId;
   }, [activeChatSessionId]);
 
-  useEffect(() => () => flushChatStreamBuffer(), []);
+  useEffect(() => {
+    chatAtBottomRef.current = chatAtBottom;
+    if (chatAtBottom) {
+      setHasUnreadLatest(false);
+    }
+  }, [chatAtBottom]);
+
+  useEffect(
+    () => () => {
+      chatStreamAbortRef.current?.abort();
+      flushChatStreamBuffer();
+    },
+    []
+  );
 
   useEffect(() => {
     const nameChanged = (form.name ?? "").trim() !== (initial.name ?? "");
@@ -681,17 +685,14 @@ export default function PercisionDebug({
       setIsElementInsightOpen(false);
       setSelectedElementInsight(null);
       setChatSessions([]);
-      setActiveChatMessages([]);
-      setChatHasMoreOlder(false);
-      setChatLoadingOlder(false);
-      setChatMessagesReady(false);
-      setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
-      setChatAtBottom(true);
+      resetChatViewportState();
       setActiveChatSessionId(null);
       setChatInput("");
       setChatStatus(null);
       setChatStorageStatus(null);
       setChatLoading(false);
+      chatStreamAbortRef.current?.abort();
+      clearStreamingMessageRefs();
       flushChatStreamBuffer();
       clearChatTypingTimer();
       return;
@@ -715,12 +716,9 @@ export default function PercisionDebug({
     setChatStatus(null);
     setChatStorageStatus(null);
     setChatLoading(false);
-    setChatLoadingOlder(false);
-    setChatMessagesReady(false);
-    setActiveChatMessages([]);
-    setChatHasMoreOlder(false);
-    setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
-    setChatAtBottom(true);
+    resetChatViewportState();
+    chatStreamAbortRef.current?.abort();
+    clearStreamingMessageRefs();
     flushChatStreamBuffer();
     clearChatTypingTimer();
 
@@ -738,18 +736,12 @@ export default function PercisionDebug({
           if (!active) return;
           console.error(err);
           setChatSessions([]);
-          setActiveChatMessages([]);
-          setChatHasMoreOlder(false);
-          setChatMessagesReady(false);
           setActiveChatSessionId(null);
           setChatInput("");
           setChatStorageStatus("会話履歴の読み込みに失敗しました。");
         });
     } else {
       setChatSessions([]);
-      setActiveChatMessages([]);
-      setChatHasMoreOlder(false);
-      setChatMessagesReady(false);
       setActiveChatSessionId(null);
       setChatInput("");
     }
@@ -761,73 +753,6 @@ export default function PercisionDebug({
       active = false;
     };
   }, [chatEnabled, isAuthenticated, profile]);
-
-  useEffect(() => {
-    if (true) return;
-
-    try {
-      saveProfileChats(authUserId, profile, chatSessions, activeChatSessionId);
-      setChatStorageStatus(null);
-    } catch (error) {
-      if (error?.code === "CHAT_STORAGE_QUOTA_EXCEEDED") {
-        setChatStorageStatus("ローカル会話ストレージが上限に達したため、最新の会話を完全には保存できませんでした。");
-        return;
-      }
-      setChatStorageStatus("ローカル会話の保存に失敗しました。");
-    }
-  }, [activeChatSessionId, authUserId, chatSessions, chatStorageEnabled, profile]);
-
-  useEffect(() => {
-    if (!chatEnabled || !activeChatSessionId) {
-      setActiveChatMessages([]);
-      setChatHasMoreOlder(false);
-      setChatLoadingOlder(false);
-      setChatMessagesReady(Boolean(!activeChatSessionId));
-      setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
-      return;
-    }
-
-    if (activeChatSession?.messageCount === 0) {
-      setActiveChatMessages([]);
-      setChatHasMoreOlder(false);
-      setChatLoadingOlder(false);
-      setChatMessagesReady(true);
-      setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
-      shouldForceScrollToBottomRef.current = true;
-      return;
-    }
-
-    let active = true;
-    setChatLoadingOlder(true);
-    setChatMessagesReady(false);
-    setChatStatus(null);
-    shouldForceScrollToBottomRef.current = true;
-
-    loadRemoteChatMessages(activeChatSessionId, { limit: CHAT_PAGE_SIZE })
-      .then((page) => {
-        if (!active) return;
-        setActiveChatMessages(page.messages);
-        setChatHasMoreOlder(page.hasMoreOlder);
-        setChatFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX - page.messages.length);
-        setChatAtBottom(true);
-      })
-      .catch((err) => {
-        if (!active) return;
-        console.error(err);
-        setActiveChatMessages([]);
-        setChatHasMoreOlder(false);
-        setChatStatus("会話メッセージの読み込みに失敗しました。");
-      })
-      .finally(() => {
-        if (!active) return;
-        setChatLoadingOlder(false);
-        setChatMessagesReady(true);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [activeChatSessionId, chatEnabled]);
 
   useEffect(() => {
     if (!activeChatSession) {
@@ -979,34 +904,6 @@ export default function PercisionDebug({
     }));
   };
 
-  const loadOlderChatMessages = async () => {
-    if (!activeChatSessionId || !chatHasMoreOlder || chatLoadingOlder || !activeChatMessages.length) return;
-
-    const beforeId = activeChatMessages[0]?.id;
-    if (!beforeId || typeof beforeId !== "number") return;
-
-    setChatLoadingOlder(true);
-    try {
-      const page = await loadRemoteChatMessages(activeChatSessionId, {
-        beforeId,
-        limit: CHAT_PAGE_SIZE,
-      });
-      if (!page.messages.length) {
-        setChatHasMoreOlder(false);
-        return;
-      }
-
-      setChatFirstItemIndex((current) => current - page.messages.length);
-      setActiveChatMessages((current) => [...page.messages, ...current]);
-      setChatHasMoreOlder(page.hasMoreOlder);
-    } catch (err) {
-      console.error(err);
-      setChatStatus("過去メッセージの読み込みに失敗しました。");
-    } finally {
-      setChatLoadingOlder(false);
-    }
-  };
-
   const handleCreateChatSession = async () => {
     if (!chatEnabled || !profile?.id || chatLoading || chatTyping) return;
 
@@ -1026,7 +923,10 @@ export default function PercisionDebug({
     clearChatTypingTimer();
     setChatLoading(false);
     setChatStatus(null);
+    setChatHistoryError(null);
     setChatStorageStatus(null);
+    resetChatViewportState();
+    shouldForceScrollToBottomRef.current = true;
     setActiveChatSessionId(sessionId);
     setIsChatSidebarOpen(false);
   };
@@ -1042,8 +942,7 @@ export default function PercisionDebug({
         setActiveChatSessionId(nextActiveSessionId);
         if (nextActiveSessionId === null) {
           setChatInput("");
-          setActiveChatMessages([]);
-          setChatHasMoreOlder(false);
+          resetChatViewportState();
         }
         return remaining;
       });
@@ -1076,28 +975,37 @@ export default function PercisionDebug({
     const sessionId = session.id;
     const timestamp = new Date().toISOString();
     const tempKey = Date.now();
-    const nextMessages = [
-      ...activeChatMessages,
-      { id: `temp-user-${tempKey}`, role: "user", content: question, reasoning: "", createdAt: timestamp },
+    const tempUserMessageId = `temp-user-${tempKey}`;
+    const tempAssistantMessageId = `temp-assistant-${tempKey}`;
+    const optimisticMessages = [
+      { id: tempUserMessageId, role: "user", content: question, reasoning: "", createdAt: timestamp },
       {
-        id: `temp-assistant-${tempKey}`,
+        id: tempAssistantMessageId,
         role: "assistant",
         content: "",
         reasoning: "",
         createdAt: timestamp,
+        typing: true,
       },
     ];
     clearChatTypingTimer();
+    clearStreamingMessageRefs();
     flushChatStreamBuffer();
+    streamingUserMessageIdRef.current = tempUserMessageId;
+    streamingAssistantMessageIdRef.current = tempAssistantMessageId;
+    chatStreamAbortRef.current?.abort();
+    const streamController = new AbortController();
+    chatStreamAbortRef.current = streamController;
     shouldForceScrollToBottomRef.current = true;
     shouldAutoFollowTypingRef.current = true;
+    setHasUnreadLatest(false);
     setChatInput("");
     setChatStatus(null);
+    setChatHistoryError(null);
     setChatStorageStatus(null);
     setChatLoading(true);
-    setChatMessagesReady(true);
     setActiveChatSessionId(sessionId);
-    setActiveChatMessages(nextMessages);
+    setActiveChatMessages((current) => mergeMessagesById(current, optimisticMessages, { position: "append" }).messages);
     updateChatSessionSummary(sessionId, (currentSession) => ({
       ...currentSession,
       title: currentSession.messageCount === 0 ? buildSessionTitle(question) : currentSession.title,
@@ -1114,21 +1022,25 @@ export default function PercisionDebug({
         chartContext: chatContext,
         sessionId,
         accessToken: localStorage.getItem(ACCESS_TOKEN),
+        signal: streamController.signal,
       });
     } catch (err) {
       clearChatTypingTimer();
       flushChatStreamBuffer();
+      clearStreamingMessageRefs();
+      if (err?.name === "AbortError") return;
       const detail =
         err?.response?.data?.detail ||
         err?.message ||
         "AI会話に失敗しました。しばらくしてから再試行してください。";
-      setActiveChatMessages((current) => current.filter((message) => message.id !== `temp-assistant-${tempKey}`));
+      setActiveChatMessages((current) => removeChatMessagesById(current, [tempAssistantMessageId]));
       updateChatSessionSummary(sessionId, (currentSession) => ({
         ...currentSession,
         updatedAt: new Date().toISOString(),
       }));
       setChatStatus(detail);
     } finally {
+      chatStreamAbortRef.current = null;
       setChatLoading(false);
     }
   };
@@ -1286,12 +1198,13 @@ export default function PercisionDebug({
   const exportFileBase = `${displayName}-${form.date || "export"}`
     .replace(/[\\/:*?"<>|]/g, "_")
     .replace(/\s+/g, "_");
+  const latestChatMessage = activeChatMessages[activeChatMessages.length - 1] || null;
 
   useEffect(() => {
-    if (!visibleChatMessages.length) return;
+    if (!activeChatMessages.length) return;
     if (!shouldForceScrollToBottomRef.current && !shouldAutoFollowTypingRef.current) return;
 
-    const targetIndex = visibleChatMessages.length - 1;
+    const targetIndex = activeChatMessages.length - 1;
     const frameId = window.requestAnimationFrame(() => {
       [inlineChatVirtuosoRef, fullscreenChatVirtuosoRef].forEach((ref) => {
         ref.current?.scrollToIndex?.({
@@ -1305,7 +1218,24 @@ export default function PercisionDebug({
       }
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [chatTyping, visibleChatMessages]);
+  }, [activeChatMessages, chatTyping]);
+
+  useEffect(() => {
+    if (!activeChatSessionId) return;
+    shouldForceScrollToBottomRef.current = true;
+  }, [activeChatSessionId]);
+
+  useEffect(() => {
+    if (!activeChatMessages.length) return;
+
+    if (!latestChatMessage) return;
+    if (chatAtBottomRef.current || shouldForceScrollToBottomRef.current || shouldAutoFollowTypingRef.current) {
+      setHasUnreadLatest(false);
+      return;
+    }
+
+    setHasUnreadLatest(true);
+  }, [activeChatMessages.length, latestChatMessage]);
 
   useEffect(() => {
     if (!isChatFullscreen) return;
@@ -1971,78 +1901,51 @@ export default function PercisionDebug({
       </div>
     );
 
+  const handleJumpToLatest = () => {
+    const targetIndex = Math.max(0, activeChatMessages.length - 1);
+    shouldForceScrollToBottomRef.current = true;
+    shouldAutoFollowTypingRef.current = true;
+    setHasUnreadLatest(false);
+    [inlineChatVirtuosoRef, fullscreenChatVirtuosoRef].forEach((ref) => {
+      ref.current?.scrollToIndex?.({
+        index: targetIndex,
+        align: "end",
+        behavior: "smooth",
+      });
+    });
+  };
+
   const renderChatMessages = (listRef, extraClass = "") => {
-    if (!activeChatSession) {
-      return <div className={`pd-chat-list ${extraClass}`.trim()}>「新規会話」をクリックして、この命局の AI 会話を始めてください。</div>;
-    }
-
-    if (!chatMessagesReady && chatLoadingOlder) {
-      return (
-        <div className={`pd-chat-list ${extraClass}`.trim()}>
-          <div className="pd-chat-loading-indicator">
-            <span className="pd-spinner" aria-hidden="true"></span>
-            <span>会話を読み込み中...</span>
-          </div>
-        </div>
-      );
-    }
-
-    if (visibleChatMessages.length === 0) {
-      return (
-        <div className={`pd-chat-list ${extraClass}`.trim()}>
-          <div className="pd-empty-state pd-chat-empty">
-            例: この命局の格局定位をもう少し噛み砕いて説明してください。
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <Virtuoso
-        ref={listRef}
-        className={`pd-chat-list pd-chat-list-virtuoso ${extraClass}`.trim()}
-        style={{ height: extraClass.includes("fullscreen") ? "100%" : "420px" }}
-        data={visibleChatMessages}
+      <ChatMessageList
+        activeChatSession={activeChatSession}
+        messages={activeChatMessages}
+        loadingInitial={chatLoadingInitial && !chatMessagesReady}
+        loadingOlder={chatLoadingOlder}
+        hasMore={chatHasMoreOlder}
+        historyError={chatHistoryError}
+        onRetryHistory={reloadChatMessages}
+        loadingReply={chatLoading}
+        chatTyping={chatTyping}
+        listRef={listRef}
+        extraClass={extraClass}
         firstItemIndex={chatFirstItemIndex}
-        computeItemKey={(index, message) => message.id ?? `${message.role}-${index}`}
-        startReached={loadOlderChatMessages}
+        onLoadOlder={loadOlderMessages}
+        atBottomThreshold={CHAT_BOTTOM_THRESHOLD}
         atBottomStateChange={(isAtBottom) => {
           setChatAtBottom(isAtBottom);
           if (!isAtBottom && chatTyping) {
             shouldAutoFollowTypingRef.current = false;
           }
+          if (isAtBottom) {
+            setHasUnreadLatest(false);
+          }
         }}
         followOutput={(isAtBottom) =>
           shouldForceScrollToBottomRef.current || shouldAutoFollowTypingRef.current || isAtBottom
         }
-        itemContent={(index, message) => (
-          <div className="pd-chat-row" data-message-id={message.id ?? index}>
-            <ChatMessageItem message={message} />
-          </div>
-        )}
-        components={{
-          Header: () =>
-            chatLoadingOlder && chatMessagesReady ? (
-              <div className="pd-chat-history-loading">
-                <span className="pd-spinner" aria-hidden="true"></span>
-                <span>過去の会話を読み込み中...</span>
-              </div>
-            ) : chatHasMoreOlder ? (
-              <div className="pd-chat-history-hint">上へスクロールすると過去の会話を読み込みます。</div>
-            ) : null,
-          Footer: () =>
-            chatLoading && !chatTyping ? (
-              <div className="pd-chat-row">
-                <div className="pd-chat-message pd-chat-message-assistant">
-                  <div className="pd-chat-role">AI</div>
-                  <div className="pd-chat-bubble pd-chat-loading">
-                    <span className="pd-spinner" aria-hidden="true"></span>
-                    <span>回答を生成中...</span>
-                  </div>
-                </div>
-              </div>
-            ) : null,
-        }}
+        showJumpToLatest={hasUnreadLatest}
+        onJumpToLatest={handleJumpToLatest}
       />
     );
   };
@@ -2624,5 +2527,3 @@ export default function PercisionDebug({
     </>
   );
 }
-
-
