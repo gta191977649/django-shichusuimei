@@ -9,7 +9,7 @@ from openai import APIConnectionError, AuthenticationError, OpenAI, RateLimitErr
 
 DEEPSEEK_BASE_URL = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = getattr(settings, "DEEPSEEK_MODEL", "deepseek-v4-pro")
-DEEPSEEK_THINKING = getattr(settings, "DEEPSEEK_THINKING", {"type": "enabled"})
+DEEPSEEK_THINKING = getattr(settings, "DEEPSEEK_THINKING", {"type": "disabled"})
 DEEPSEEK_REASONING_EFFORT = getattr(settings, "DEEPSEEK_REASONING_EFFORT", "high")
 
 
@@ -35,10 +35,17 @@ def _sanitize_json(raw: str) -> str:
     # remove ```json fences
     s = re.sub(r"^```[a-zA-Z]*\s*|```$", "", s, flags=re.MULTILINE)
 
-    # find the first [ ... ] block
-    start, end = s.find("["), s.rfind("]")
-    if start != -1 and end != -1 and end > start:
-        s = s[start:end + 1]
+    # extract the outermost JSON container, preferring whichever starts first
+    array_start, array_end = s.find("["), s.rfind("]")
+    object_start, object_end = s.find("{"), s.rfind("}")
+    starts = [(array_start, array_end, "["), (object_start, object_end, "{")]
+    starts = [item for item in starts if item[0] != -1 and item[1] != -1 and item[1] > item[0]]
+    if starts:
+        start, end, container = min(starts, key=lambda item: item[0])
+        if container == "[":
+            s = s[start:end + 1]
+        else:
+            s = s[start:end + 1]
 
     # fix keys like `" "content"` → `"content"`
     s = s.replace('" "content"', '"content"').replace('" "entity"', '"entity"')

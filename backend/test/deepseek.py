@@ -1,7 +1,12 @@
 # Please install OpenAI SDK first: `pip3 install openai`
+import os
+
 from openai import OpenAI
 
-KEY = "sk-ecff03e8f0894a48a0b8f19c073a8a36"
+KEY = os.getenv("DEEPSEEK_API_KEY", "")
+if not KEY:
+    raise RuntimeError("Set DEEPSEEK_API_KEY before running this script.")
+
 client = OpenAI(api_key=KEY, base_url="https://api.deepseek.com")
 
 # Send the request with streaming enabled

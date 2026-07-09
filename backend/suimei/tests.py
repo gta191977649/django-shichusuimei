@@ -1,4 +1,5 @@
 import datetime
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -10,9 +11,14 @@ from rest_framework.test import APIClient
 from suimei.meishiki import Meishi
 from suimei.model.Gouka import Gouka
 from suimei.model.bunseki import Bunseki
+from suimei.model.chat import ChatMessage, ChatSession
 from suimei.model.meishiki import Meishiki as MeishikiRecord
+from suimei.service.deepseek import DeepseekError
+from suimei.service.llm_chat import LLMChatError
 from suimei.service.prompt_builder import (
+    build_chat_prompt_from_meishiki,
     build_prompt_from_meishiki,
+    format_element_flow_reference,
     format_gouka_reference,
     format_shin_type_reference,
 )
@@ -308,8 +314,11 @@ class SuimeiViewResponseTests(TestCase):
 class BunsekiExistingOnlyTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="profile-user", password="test-password")
+        self.admin = User.objects.create_superuser(username="chat-admin", password="test-password")
         self.api_client = APIClient()
         self.api_client.force_authenticate(user=self.user)
+        self.admin_client = APIClient()
+        self.admin_client.force_authenticate(user=self.admin)
 
     def create_profile(self):
         return MeishikiRecord.objects.create(
@@ -319,11 +328,41 @@ class BunsekiExistingOnlyTests(TestCase):
             owner=self.user,
         )
 
+    def parse_sse_events(self, response_or_body):
+        if isinstance(response_or_body, str):
+            body = response_or_body
+        else:
+            body = b"".join(response_or_body.streaming_content).decode("utf-8")
+        events = []
+
+        for raw_event in body.strip().split("\n\n"):
+            if not raw_event.strip():
+                continue
+            data_lines = [line[5:].strip() for line in raw_event.splitlines() if line.startswith("data:")]
+            if not data_lines:
+                continue
+            events.append(json.loads("".join(data_lines)))
+
+        return events
+
     def test_gpt_existing_only_returns_cached_bunseki(self):
         profile = self.create_profile()
         Bunseki.objects.create(
             meishiki=profile,
             content=[{"entity": "cached", "content": "already exists"}],
+            element_insights={
+                "year.stem": {
+                    "key": "year.stem",
+                    "pillar": "year",
+                    "part": "stem",
+                    "pillarLabel": "年柱",
+                    "partLabel": "天干",
+                    "symbol": "丁",
+                    "tsuhen": "比肩",
+                    "title": "年柱天干丁火",
+                    "content": "这是中文说明。",
+                }
+            },
             reason="cached reason",
         )
 
@@ -333,6 +372,7 @@ class BunsekiExistingOnlyTests(TestCase):
         payload = response.json()
         self.assertEqual(payload["content"][0]["entity"], "cached")
         self.assertEqual(payload["reason"], "cached reason")
+        self.assertEqual(payload["element_insights"]["year.stem"]["title"], "年柱天干丁火")
 
     def test_gpt_existing_only_does_not_generate_when_missing(self):
         profile = self.create_profile()
@@ -360,7 +400,13 @@ class BunsekiExistingOnlyTests(TestCase):
         admin_client = APIClient()
         admin_client.force_authenticate(user=admin)
 
-        with patch("builtins.print"), patch("suimei.views.analyze_bazi", return_value={"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"}):
+        with patch("builtins.print"), patch(
+            "suimei.views.analyze_bazi",
+            side_effect=[
+                {"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"},
+                {"payload": {}},
+            ],
+        ):
             response = admin_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
 
         self.assertEqual(response.status_code, 201)
@@ -368,12 +414,469 @@ class BunsekiExistingOnlyTests(TestCase):
         self.assertEqual(payload["content"][0]["entity"], "fresh")
         self.assertEqual(payload["reason"], "new reason")
 
+    def test_admin_force_refresh_normalizes_element_insight_payload(self):
+        profile = self.create_profile()
+        admin = User.objects.create_superuser(username="admin-element-insight", password="test-password")
+        admin_client = APIClient()
+        admin_client.force_authenticate(user=admin)
+
+        with patch("builtins.print"), patch(
+            "suimei.views.analyze_bazi",
+            side_effect=[
+                {
+                    "payload": [{"entity": "fresh", "content": "regenerated"}],
+                    "reason": "new reason",
+                },
+                {
+                    "payload": {
+                        "year.stem": {
+                            "title": "年柱天干丁火",
+                            "content": "这是中文要素解读。",
+                        }
+                    },
+                },
+            ],
+        ):
+            response = admin_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["content"][0]["entity"], "fresh")
+        self.assertEqual(payload["element_insights"]["year.stem"]["symbol"], "丁")
+        self.assertEqual(payload["element_insights"]["year.stem"]["title"], "年柱天干丁火")
+        self.assertEqual(payload["element_insights"]["year.stem"]["content"], "这是中文要素解读。")
+
+    def test_admin_force_refresh_keeps_sections_when_element_insight_generation_fails(self):
+        profile = self.create_profile()
+        admin = User.objects.create_superuser(username="admin-element-insight-fail", password="test-password")
+        admin_client = APIClient()
+        admin_client.force_authenticate(user=admin)
+
+        with patch("builtins.print"), patch(
+            "suimei.views.analyze_bazi",
+            side_effect=[
+                {"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"},
+                DeepseekError("insight failed"),
+            ],
+        ):
+            response = admin_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["content"][0]["entity"], "fresh")
+        self.assertEqual(payload["reason"], "new reason")
+        self.assertEqual(payload["element_insights"], {})
+
+    def test_gpt_stream_returns_progress_and_result(self):
+        profile = self.create_profile()
+
+        with patch("builtins.print"), patch(
+            "suimei.views.analyze_bazi",
+            side_effect=[
+                {"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"},
+                {"payload": {"year.stem": {"title": "年柱天干丁火", "content": "这是中文要素解读。"}}},
+            ],
+        ):
+            response = self.admin_client.post(
+                "/api/gpt/stream",
+                {"meishiki_id": profile.id, "force": True},
+                content_type="application/json",
+            )
+            events = self.parse_sse_events(response)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["X-Accel-Buffering"], "no")
+        progress_events = [event for event in events if event.get("type") == "progress"]
+        stages = [event["stage"] for event in progress_events]
+        self.assertEqual(
+            stages,
+            [
+                "loading_chart",
+                "building_prompt",
+                "generating_sections",
+                "generating_elements",
+                "saving",
+                "completed",
+            ],
+        )
+        self.assertEqual(progress_events[-1]["progress"], 100)
+        self.assertEqual(events[-1]["type"], "result")
+        self.assertEqual(events[-1]["payload"]["content"][0]["entity"], "fresh")
+        self.assertEqual(events[-1]["payload"]["element_insights"]["year.stem"]["title"], "年柱天干丁火")
+
+    def test_gpt_stream_returns_result_when_element_insight_generation_fails(self):
+        profile = self.create_profile()
+
+        with patch("builtins.print"), patch(
+            "suimei.views.analyze_bazi",
+            side_effect=[
+                {"payload": [{"entity": "fresh", "content": "regenerated"}], "reason": "new reason"},
+                DeepseekError("insight failed"),
+            ],
+        ):
+            response = self.admin_client.post(
+                "/api/gpt/stream",
+                {"meishiki_id": profile.id, "force": True},
+                content_type="application/json",
+            )
+            events = self.parse_sse_events(response)
+        self.assertEqual(events[-1]["type"], "result")
+        self.assertEqual(events[-1]["payload"]["content"][0]["entity"], "fresh")
+        self.assertEqual(events[-1]["payload"]["element_insights"], {})
+
+    def test_non_admin_cannot_force_refresh_stream(self):
+        profile = self.create_profile()
+
+        response = self.api_client.post(
+            "/api/gpt/stream",
+            {"meishiki_id": profile.id, "force": True},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
     def test_non_admin_cannot_force_refresh(self):
         profile = self.create_profile()
 
         response = self.api_client.get(f"/api/gpt?meishiki_id={profile.id}&force=1")
 
         self.assertEqual(response.status_code, 403)
+
+    def test_gpt_chat_requires_login(self):
+        profile = self.create_profile()
+
+        response = self.client.post(
+            "/api/gpt/chat",
+            {"meishiki_id": profile.id, "question": "Explain this chart"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_gpt_chat_requires_admin(self):
+        profile = self.create_profile()
+
+        response = self.api_client.post(
+            "/api/gpt/chat",
+            {"meishiki_id": profile.id, "question": "Explain this chart"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_gpt_chat_requires_question(self):
+        profile = self.create_profile()
+
+        response = self.admin_client.post(
+            "/api/gpt/chat",
+            {"meishiki_id": profile.id, "question": " "},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_gpt_chat_returns_answer_with_existing_bunseki_context(self):
+        profile = self.create_profile()
+        Bunseki.objects.create(
+            meishiki=profile,
+            content=[{"entity": "cached", "content": "already exists"}],
+            reason="cached reason",
+        )
+
+        with patch(
+            "builtins.print"
+        ), patch(
+            "suimei.views.generate_chat_reply_payload",
+            return_value={"answer": "chat answer", "reasoning": "chat reasoning"},
+        ) as mocked_chat:
+            response = self.admin_client.post(
+                "/api/gpt/chat",
+                {
+                    "meishiki_id": profile.id,
+                    "question": "What is the main pattern?",
+                    "history": [{"role": "user", "content": "previous question"}],
+                    "chart_context": {"shi_type": "sample"},
+                },
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["answer"], "chat answer")
+        self.assertEqual(response.json()["reasoning"], "chat reasoning")
+        messages = mocked_chat.call_args.kwargs["messages"]
+        serialized = "\n".join(str(message["content"]) for message in messages)
+        self.assertIn("already exists", serialized)
+        self.assertIn("previous question", serialized)
+        self.assertIn("What is the main pattern?", serialized)
+        self.assertIn("CHAT命局与近期运势参考", serialized)
+        self.assertIn("当前大运", serialized)
+        self.assertIn("当前流年", serialized)
+        self.assertIn("当前流月", serialized)
+        self.assertIn("当前大运/流年/流月与原局干支关系", serialized)
+        self.assertNotIn("输出必须是 JSON 数组形式", serialized)
+
+    def test_gpt_chat_stream_returns_streaming_chunks(self):
+        profile = self.create_profile()
+
+        with patch("builtins.print"), patch(
+            "suimei.views.stream_chat_reply_events",
+            return_value=iter(
+                [
+                    {"type": "reasoning", "delta": "think"},
+                    {"type": "content", "delta": "hello"},
+                    {"type": "content", "delta": " stream"},
+                    {"type": "done"},
+                ]
+            ),
+        ) as mocked_stream:
+            response = self.admin_client.post(
+                "/api/gpt/chat/stream",
+                {
+                    "meishiki_id": profile.id,
+                    "question": "Stream this answer",
+                    "history": [],
+                    "chart_context": {"shi_type": "sample"},
+                },
+                content_type="application/json",
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.streaming)
+            self.assertEqual(response["X-Accel-Buffering"], "no")
+            self.assertEqual(response["Cache-Control"], "no-cache")
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        self.assertIn('"type": "reasoning"', body)
+        self.assertIn('"delta": "hello"', body)
+        self.assertIn('"type": "done"', body)
+        messages = mocked_stream.call_args.kwargs["messages"]
+        serialized = "\n".join(str(message["content"]) for message in messages)
+        self.assertIn("Stream this answer", serialized)
+
+    def test_gpt_chat_service_is_not_implemented_in_deepseek_module(self):
+        import suimei.service.deepseek as deepseek
+        import suimei.service.llm_chat as llm_chat
+
+        self.assertFalse(hasattr(deepseek, "chat_bazi"))
+        self.assertTrue(hasattr(llm_chat, "generate_chat_reply"))
+        self.assertTrue(hasattr(llm_chat, "stream_chat_reply"))
+
+    def test_chat_session_list_requires_login(self):
+        profile = self.create_profile()
+
+        response = self.client.get(f"/api/gpt/chat/sessions?meishiki_id={profile.id}")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_chat_session_list_requires_admin(self):
+        profile = self.create_profile()
+
+        response = self.api_client.get(f"/api/gpt/chat/sessions?meishiki_id={profile.id}")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_chat_session_create_returns_empty_session(self):
+        profile = self.create_profile()
+
+        response = self.admin_client.post(
+            "/api/gpt/chat/sessions",
+            {"meishiki_id": profile.id},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertEqual(payload["meishiki_id"], profile.id)
+        self.assertEqual(payload["title"], "新規会話")
+        self.assertEqual(payload["message_count"], 0)
+        self.assertEqual(payload["last_message_preview"], "")
+        self.assertIsNone(payload["last_message_created_at"])
+        self.assertTrue(ChatSession.objects.filter(id=payload["id"], owner=self.admin, meishiki=profile).exists())
+
+    def test_chat_session_list_returns_only_current_admin_sessions(self):
+        profile = self.create_profile()
+        other_admin = User.objects.create_superuser(username="chat-admin-other", password="test-password")
+        own_session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="mine")
+        ChatMessage.objects.create(session=own_session, role="user", content="own question")
+        other_session = ChatSession.objects.create(owner=other_admin, meishiki=profile, title="theirs")
+        ChatMessage.objects.create(session=other_session, role="user", content="other question")
+
+        response = self.admin_client.get(f"/api/gpt/chat/sessions?meishiki_id={profile.id}")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["id"], own_session.id)
+        self.assertEqual(payload[0]["message_count"], 1)
+        self.assertEqual(payload[0]["last_message_preview"], "own question")
+        self.assertIsNotNone(payload[0]["last_message_created_at"])
+
+    def test_chat_session_messages_returns_latest_page_in_ascending_order(self):
+        profile = self.create_profile()
+        session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="history")
+        created_messages = [
+            ChatMessage.objects.create(session=session, role="user" if index % 2 == 0 else "assistant", content=f"message {index}")
+            for index in range(45)
+        ]
+
+        response = self.admin_client.get(f"/api/gpt/chat/sessions/{session.id}/messages?limit=40")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["messages"]), 40)
+        self.assertTrue(payload["has_more_older"])
+        self.assertEqual(payload["oldest_message_id"], created_messages[5].id)
+        self.assertEqual(payload["newest_message_id"], created_messages[-1].id)
+        self.assertEqual(payload["messages"][0]["content"], "message 5")
+        self.assertEqual(payload["messages"][-1]["content"], "message 44")
+
+    def test_chat_session_messages_supports_before_id_pagination(self):
+        profile = self.create_profile()
+        session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="history")
+        created_messages = [
+            ChatMessage.objects.create(session=session, role="user", content=f"message {index}")
+            for index in range(6)
+        ]
+
+        response = self.admin_client.get(
+            f"/api/gpt/chat/sessions/{session.id}/messages?limit=3&before_id={created_messages[4].id}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual([message["content"] for message in payload["messages"]], ["message 1", "message 2", "message 3"])
+        self.assertTrue(payload["has_more_older"])
+        self.assertEqual(payload["oldest_message_id"], created_messages[1].id)
+        self.assertEqual(payload["newest_message_id"], created_messages[3].id)
+
+    def test_chat_session_messages_cannot_access_other_admin_session(self):
+        profile = self.create_profile()
+        other_admin = User.objects.create_superuser(username="chat-admin-msg-owner", password="test-password")
+        session = ChatSession.objects.create(owner=other_admin, meishiki=profile, title="other")
+
+        response = self.admin_client.get(f"/api/gpt/chat/sessions/{session.id}/messages")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_chat_session_delete_cascades_messages(self):
+        profile = self.create_profile()
+        session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="delete me")
+        message = ChatMessage.objects.create(session=session, role="user", content="delete me too")
+
+        response = self.admin_client.delete(f"/api/gpt/chat/sessions/{session.id}")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(ChatSession.objects.filter(id=session.id).exists())
+        self.assertFalse(ChatMessage.objects.filter(id=message.id).exists())
+
+    def test_chat_session_stream_persists_messages_and_uses_database_history(self):
+        profile = self.create_profile()
+        session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="Existing session")
+        ChatMessage.objects.create(session=session, role="user", content="previous question")
+        ChatMessage.objects.create(session=session, role="assistant", content="previous answer", reasoning="previous why")
+        Bunseki.objects.create(
+            meishiki=profile,
+            content=[{"entity": "cached", "content": "already exists"}],
+            reason="cached reason",
+        )
+
+        with patch("builtins.print"), patch(
+            "suimei.views.stream_chat_reply_events",
+            return_value=iter(
+                [
+                    {"type": "reasoning", "delta": "think"},
+                    {"type": "content", "delta": "hello"},
+                    {"type": "content", "delta": " world"},
+                    {"type": "done"},
+                ]
+            ),
+        ) as mocked_stream:
+            response = self.admin_client.post(
+                f"/api/gpt/chat/sessions/{session.id}/stream",
+                {
+                    "question": "What comes next?",
+                    "chart_context": {"shi_type": "sample"},
+                },
+                content_type="application/json",
+            )
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.streaming)
+        self.assertEqual(response["X-Accel-Buffering"], "no")
+        self.assertIn('"type": "reasoning"', body)
+        self.assertIn('"type": "done"', body)
+        self.assertIn('"user_message"', body)
+        self.assertIn('"assistant_message"', body)
+
+        session.refresh_from_db()
+        self.assertEqual(session.title, "Existing session")
+        persisted_messages = list(session.messages.order_by("created_at", "id"))
+        self.assertEqual(len(persisted_messages), 4)
+        self.assertEqual(persisted_messages[-2].role, "user")
+        self.assertEqual(persisted_messages[-2].content, "What comes next?")
+        self.assertEqual(persisted_messages[-1].role, "assistant")
+        self.assertEqual(persisted_messages[-1].content, "hello world")
+        self.assertEqual(persisted_messages[-1].reasoning, "think")
+
+        messages = mocked_stream.call_args.kwargs["messages"]
+        serialized = "\n".join(str(message["content"]) for message in messages)
+        self.assertIn("previous question", serialized)
+        self.assertIn("previous answer", serialized)
+        self.assertIn("What comes next?", serialized)
+        self.assertIn("already exists", serialized)
+        self.assertIn("[大运排盘]", serialized)
+        self.assertIn("第1柱大运", serialized)
+        done_event = self.parse_sse_events(body)[-1]
+        self.assertEqual(done_event["type"], "done")
+        self.assertEqual(done_event["session_id"], session.id)
+        self.assertEqual(done_event["title"], "Existing session")
+        self.assertEqual(done_event["user_message"]["content"], "What comes next?")
+        self.assertEqual(done_event["assistant_message"]["content"], "hello world")
+        self.assertEqual(done_event["assistant_message"]["reasoning"], "think")
+
+    def test_chat_session_stream_does_not_persist_empty_assistant_message_on_failure(self):
+        profile = self.create_profile()
+        session = ChatSession.objects.create(owner=self.admin, meishiki=profile, title="新規会話")
+
+        with patch("builtins.print"), patch(
+            "suimei.views.stream_chat_reply_events",
+            side_effect=LLMChatError("stream failed"),
+        ):
+            response = self.admin_client.post(
+                f"/api/gpt/chat/sessions/{session.id}/stream",
+                {
+                    "question": "Will this fail?",
+                    "chart_context": {"shi_type": "sample"},
+                },
+                content_type="application/json",
+            )
+            body = b"".join(response.streaming_content).decode("utf-8")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('"type": "error"', body)
+        session.refresh_from_db()
+        persisted_messages = list(session.messages.order_by("created_at", "id"))
+        self.assertEqual(len(persisted_messages), 1)
+        self.assertEqual(persisted_messages[0].role, "user")
+        self.assertEqual(persisted_messages[0].content, "Will this fail?")
+
+    def test_chat_session_stream_cannot_access_other_admin_session(self):
+        profile = self.create_profile()
+        other_admin = User.objects.create_superuser(username="chat-admin-owner", password="test-password")
+        session = ChatSession.objects.create(owner=other_admin, meishiki=profile, title="other")
+
+        response = self.admin_client.post(
+            f"/api/gpt/chat/sessions/{session.id}/stream",
+            {
+                "question": "No access",
+                "chart_context": {"shi_type": "sample"},
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
 
 
 class MeishikiProfilePermissionTests(TestCase):
@@ -546,6 +1049,25 @@ class GoukaResolutionTests(TestCase):
         self.assertEqual(banhe["element"], ["申", "子"])
         self.assertEqual(banhe["to"], "水")
 
+    def test_gouka_detects_sanhui_without_adjacent_branches(self):
+        sanhui_meishiki = self.build_stub_meishiki(
+            ["丙", "乙", "癸", "癸"],
+            ["子", "未", "丑", "亥"],
+            [
+                ["癸", None, None],
+                ["己", "丁", "乙"],
+                ["己", "辛", "癸"],
+                ["壬", "甲", None],
+            ],
+        )
+
+        sanhui_gouka = Gouka(sanhui_meishiki).gouka
+        sanhui = next(item for item in sanhui_gouka["shi"] if item["type"] == "三会局")
+
+        self.assertEqual(sanhui["element"], ["亥", "子", "丑"])
+        self.assertEqual(sanhui["index"], [3, 0, 2])
+        self.assertEqual(sanhui["to"], "水")
+
 
 class PromptBuilderTests(TestCase):
     def test_prompt_includes_gouka_resolution_reference(self):
@@ -572,6 +1094,17 @@ class PromptBuilderTests(TestCase):
 
         self.assertIn("申子辰三合局→水", text)
         self.assertIn("申子半合→水", text)
+
+    def test_gouka_reference_renders_sanhui_full_members(self):
+        text = format_gouka_reference({
+            "kan": [],
+            "shi": [
+                {"type": "三会局", "element": ["亥", "子", "丑"], "to": "水"},
+            ],
+            "resolved": {"summary": ["地支三会局裁决参照"]},
+        })
+
+        self.assertIn("亥子丑三会局→水", text)
 
     def test_prompt_includes_shin_type_ratio_reference(self):
         with patch("builtins.print"):
@@ -622,6 +1155,193 @@ class PromptBuilderTests(TestCase):
         self.assertIn("补正依据", text)
         self.assertIn("反映刑、冲、破、害", text)
         self.assertNotIn("補正根拠", text)
+    def test_shin_type_reference_includes_sanhui_adjustment_detail(self):
+        relation = {"木": "財", "火": "官", "土": "印", "金": "比劫", "水": "食傷"}
+        bazi = SimpleNamespace(
+            shin_type="身弱",
+            shin_type_adjusted="身中",
+            shin_type_ratio={"same_ratio": 0.45, "different_ratio": 0.55, "delta": -0.10},
+            shin_type_ratio_adjusted={"same_ratio": 0.50, "different_ratio": 0.50, "delta": 0.0},
+            element_energy={"energy": TEST_ENERGY, "relation": relation},
+            element_energy_adjusted={
+                "energy": {"木": 110.0, "火": 75.0, "土": 50.0, "金": 35.0, "水": 130.0},
+                "relation": relation,
+                "basis_detail": "gouka_resolved_tsukirei_tempered",
+                "adjustments": [
+                    {
+                        "type": "支化",
+                        "source_type": "三会局",
+                        "relation_element": ["亥", "子", "丑"],
+                        "to": "水",
+                        "action": "化入",
+                        "element": "水",
+                        "delta": 30.0,
+                        "season_factor": 1.2,
+                    }
+                ],
+            },
+        )
+
+        text = format_shin_type_reference(bazi)
+
+        self.assertIn("三会局", text)
+        self.assertIn("亥子丑", text)
+
+    def test_prompt_includes_sanhui_gouka_reference(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+        meishi.gouka = {
+            "kan": [],
+            "shi": [
+                {"type": "三会局", "element": ["亥", "子", "丑"], "to": "水"},
+            ],
+            "resolved": {"summary": ["地支三会局裁决参照"]},
+        }
+
+        with patch("builtins.print"):
+            messages = build_prompt_from_meishiki(meishi)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("三会局", serialized)
+        self.assertIn("亥子丑三会局→水", serialized)
+
+    def test_element_flow_reference_renders_adjacent_and_same_pillar(self):
+        bazi = SimpleNamespace(
+            tenkan=["丁", "壬", "庚", "辛"],
+            chishi=["丑", "寅", "巳", "巳"],
+            junshi=[
+                ["正官", "食神", "日元", "劫财"],
+                [],
+                [],
+                ["正印", "偏财", "七杀", "七杀"],
+            ],
+            gouka={
+                "kan": [
+                    {"type": "干合", "index": [0, 1], "element": ["丁", "壬"], "to": "木"},
+                ],
+                "shi": [
+                    {"type": "支刑", "index": [1, 2], "element": ["寅", "巳"]},
+                ],
+            },
+            birth_time_unknown=False,
+        )
+
+        text = format_element_flow_reference(bazi)
+
+        self.assertIn("判定范围：相邻柱", text)
+        self.assertIn("年柱天干丁火(正官) × 月柱天干壬水(食神)：干合→木（流通）", text)
+        self.assertIn("月柱地支寅木(偏财) × 日柱地支巳火(七杀)：支刑（阻塞）", text)
+        self.assertIn("年柱同柱", text)
+        self.assertIn("思维回路", text)
+
+    def test_prompt_includes_element_flow_reference_for_thinking_loop(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+
+        with patch("builtins.print"):
+            messages = build_prompt_from_meishiki(meishi)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("流通辅助信息", serialized)
+        self.assertIn('"entity": "思维回路"', serialized)
+        self.assertIn("思维回路", serialized)
+        self.assertIn("优势", serialized)
+        self.assertIn("问题卡点", serialized)
+
+    def test_chat_prompt_includes_sanhui_timing_relation(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+
+        precision_chart = {
+            "current_date": "2026-07-04",
+            "birth_time_unknown": False,
+            "natal": {
+                "year": {"tenkan": "丙", "chishi": "子"},
+                "month": {"tenkan": "乙", "chishi": "未"},
+                "day": {"tenkan": "癸", "chishi": "丑"},
+                "time": {"tenkan": "癸", "chishi": "亥"},
+            },
+            "active_daiun": {},
+            "flow_year": {},
+            "flow_month": {},
+        }
+
+        messages = build_chat_prompt_from_meishiki(meishi, precision_chart=precision_chart)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("三会局→水", serialized)
+        self.assertIn("原局年柱(子)", serialized)
+        self.assertIn("原局日柱(丑)", serialized)
+        self.assertIn("原局时柱(亥)", serialized)
+
+    def test_chat_prompt_includes_full_daiun_reference(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+
+        precision_chart = {
+            "current_date": "2026-07-07",
+            "birth_time_unknown": False,
+            "natal": {
+                "year": {"tenkan": "丁", "chishi": "丑"},
+                "month": {"tenkan": "壬", "chishi": "寅"},
+                "day": {"tenkan": "丙", "chishi": "子"},
+                "time": {"tenkan": "辛", "chishi": "卯"},
+            },
+            "daiun_snapshots": [
+                {
+                    "tenkan": "辛",
+                    "chishi": "丑",
+                    "kanshi": "辛丑",
+                    "kan_tsuhen": "正财",
+                    "shi_tsuhen": "伤官",
+                    "seiun": "养",
+                    "jizuo": "墓",
+                    "kubou": "辰巳",
+                    "nayin": "壁上土",
+                    "start_year": 2000,
+                    "end_year": 2009,
+                    "start_age": 3,
+                },
+                {
+                    "tenkan": "庚",
+                    "chishi": "子",
+                    "kanshi": "庚子",
+                    "kan_tsuhen": "偏财",
+                    "shi_tsuhen": "七杀",
+                    "seiun": "长生",
+                    "jizuo": "胎",
+                    "kubou": "午未",
+                    "nayin": "壁上土",
+                    "start_year": 2010,
+                    "end_year": 2019,
+                    "start_age": 13,
+                },
+            ],
+            "active_daiun": {"tenkan": "庚", "chishi": "子", "kanshi": "庚子"},
+            "flow_year": {"tenkan": "丙", "chishi": "午", "kanshi": "丙午"},
+            "flow_month": {"tenkan": "甲", "chishi": "午", "kanshi": "甲午"},
+        }
+
+        messages = build_chat_prompt_from_meishiki(meishi, precision_chart=precision_chart)
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("[大运排盘]", serialized)
+        self.assertIn("第1柱大运: 辛丑", serialized)
+        self.assertIn("大运期间=2000-2009", serialized)
+        self.assertIn("起运年龄=3", serialized)
+        self.assertIn("第2柱大运: 庚子", serialized)
+
+    def test_chat_prompt_includes_element_flow_reference_for_thinking_loop(self):
+        with patch("builtins.print"):
+            meishi = Meishi(TEST_BIRTHDATE, 1)
+
+        messages = build_chat_prompt_from_meishiki(meishi, precision_chart={"natal": {}})
+        serialized = "\n".join(str(message["content"]) for message in messages)
+
+        self.assertIn("原局流通辅助参考", serialized)
+        self.assertIn("思维回路", serialized)
+        self.assertIn("流通链路", serialized)
+
     def test_prompt_marks_time_pillar_unknown_when_birth_time_is_unknown(self):
         with patch("builtins.print"):
             meishi = Meishi(TEST_BIRTHDATE, 1)

@@ -1,9 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@400;500;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --pd-chat-font-family: "Noto Sans SC", "Noto Sans JP", "BIZ UDGothic", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif;
+}
 
 .kaisei-opti-regular {
   font-family: "Kaisei Opti", serif;
@@ -195,19 +201,124 @@ rb, rt {
 }
 
 .header-debug {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   background-color: #000;
   color: white;
   display: flex;
-  padding-left: 10px;
+  align-items: center;
+  padding: 0 10px;
 }
-.header-debug li{
+
+.header-debug-list {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.header-debug li {
   list-style-type: none;
-  padding: 2px;
+  padding: 2px 0;
+  white-space: nowrap;
+}
+
+.header-debug a,
+.header-debug-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.header-debug-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.header-debug-note {
+  margin-left: auto;
+  color: lightblue;
+}
+
+.app-shell {
+  display: flex;
+}
+
+.app-sidebar-frame {
+  position: fixed;
+  left: 0;
+  z-index: 1100;
+  border-right: 1px solid #ccc;
+  background: #fff;
+  overflow: hidden;
+  transition: transform 0.24s ease, width 0.24s ease;
+}
+
+.app-sidebar-frame:not(.is-visible) {
+  display: none;
+}
+
+.app-main {
+  overflow-y: auto;
+  transition: margin-left 0.24s ease, width 0.24s ease;
+}
+
+.app-sidebar-backdrop {
+  display: none;
 }
 
 @media (max-width: 960px) {
-  .header-debug {
+  .header-debug-list {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .header-debug-list::-webkit-scrollbar {
     display: none;
+  }
+
+  .header-debug-item {
+    flex: 0 0 auto;
+  }
+
+  .header-debug-note {
+    display: none;
+  }
+
+  .app-sidebar-frame.is-mobile {
+    inset-inline: 0;
+    width: 100vw !important;
+    border-right: none;
+    transform: translateX(-100%);
+  }
+
+  .app-sidebar-frame.is-mobile.is-visible {
+    display: block;
+    transform: translateX(0);
+  }
+
+  .app-sidebar-backdrop {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1090;
+    display: block;
+    border: none;
+    background: rgba(0, 0, 0, 0.28);
+  }
+
+  .app-main.is-sidebar-open {
+    overflow: hidden;
   }
 
   .gouka-subgrid {
@@ -245,15 +356,25 @@ rb, rt {
   border-color: #000;
 }
 
+.table-gouka {
+  position: relative;
+  z-index: 2;
+}
+
 .table-gouka td{
   border: 0px solid;
 }
 
 .gouka-element {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
   font-weight: bold;
   border-width: 1.2px;
-  line-height: 18px;
+  line-height: 1;
   width: 20px;  
   height: 20px;
   margin-left: auto;
@@ -261,8 +382,9 @@ rb, rt {
   margin-top: 5px;
   margin-bottom: 5px;
   border-radius: 100%;
-  background-color: white;
+  background-color: #fff;
   border-color: #000;
+  box-shadow: 0 0 0 3px #fff;
 }
 
 .gouka-element-active {
@@ -328,6 +450,156 @@ rb, rt {
 .gouka-subtitle {
   margin-bottom: 8px;
   font-weight: 700;
+}
+
+.element-flow {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid #000;
+  background: transparent;
+  color: #000;
+  container-type: inline-size;
+}
+
+.element-flow-canvas {
+  position: relative;
+  width: 100%;
+  max-width: 574px;
+  aspect-ratio: 478 / 304;
+  margin: 0 auto;
+  background: transparent;
+  overflow: visible;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+}
+
+.element-flow-lines,
+.element-flow-relation,
+.element-flow-pillar {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.element-flow-line {
+  position: absolute;
+  height: 1.1px;
+  transform-origin: 0 50%;
+  border-radius: 999px;
+}
+
+.element-flow-relation-flow .element-flow-line {
+  background: var(--element-flow-color, forestgreen);
+}
+
+.element-flow-relation-block .element-flow-line {
+  background: var(--element-flow-color, #e64841);
+}
+
+.element-flow-badge {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--element-flow-color, forestgreen);
+  border: 1px solid var(--element-flow-color, forestgreen);
+  box-shadow: 0 0 0 4px #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  z-index: 3;
+}
+
+.element-flow-relation-block .element-flow-badge {
+  background: var(--element-flow-color, #e64841);
+  border-color: var(--element-flow-color, #e64841);
+}
+
+.element-flow-pillar-label,
+.element-flow-tsuhen,
+.element-flow-symbol {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.element-flow-pillar-label,
+.element-flow-tsuhen {
+  color: #000;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "Kaisei Opti", "BIZ UDGothic", serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.element-flow-symbol {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Kaisei Opti", "BIZ UDGothic", serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+
+.element-flow-pillar-hidden {
+  opacity: 0.45;
+}
+
+.element-flow-legend {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 0 2px 2px;
+  color: #000;
+  font-size: clamp(11px, 3.4cqw, 12px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.element-flow-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.element-flow-legend-dot {
+  flex: 0 0 auto;
+  width: clamp(12px, 4cqw, 14px);
+  height: clamp(12px, 4cqw, 14px);
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.element-flow-legend-flow {
+  background: forestgreen;
+}
+
+.element-flow-legend-block {
+  background: #e64841;
+}
+
+.element-flow-empty {
+  padding: 16px;
+  text-align: center;
 }
 
 .gouka-chip-list,
@@ -492,6 +764,17 @@ rb, rt {
 
 .profile-sidebar {
   color: #000;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.profile-sidebar-head {
+  flex-shrink: 0;
 }
 
 .profile-sidebar-close {
@@ -526,6 +809,11 @@ rb, rt {
   border: 1px solid #000;
   padding: 10px;
   background: #fff;
+}
+
+.profile-editor-shell {
+  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
 .profile-editor label {
@@ -579,7 +867,18 @@ rb, rt {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 12px;
+}
+
+.profile-list-shell {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.profile-list-shell .profile-list {
+  margin-top: 0;
 }
 
 .profile-list-item {
@@ -592,6 +891,17 @@ rb, rt {
 
 .profile-list-item-active {
   background: #ccffcc;
+}
+
+.profile-sidebar-mobile {
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+}
+
+.profile-sidebar-mobile .profile-sidebar-close {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
 }
 
 .gouka-reason-list,

@@ -2,6 +2,7 @@ from django.contrib import admin
 from suimei.model.meishiki import Meishiki
 from suimei.model.wiki import Wiki
 from suimei.model.bunseki import Bunseki
+from suimei.model.chat import ChatMessage, ChatSession
 from django.db import models
 from ckeditor.widgets import CKEditorWidget
 from prettyjson import PrettyJSONWidget
@@ -54,10 +55,25 @@ class WikiAdmin(admin.ModelAdmin):
     list_display = ('key',  'tag')
 
 
+class ChatMessageInline(admin.TabularInline):
+    model = ChatMessage
+    extra = 0
+    readonly_fields = ("role", "content", "reasoning", "created_at")
+    can_delete = False
+
+
+class ChatSessionAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "meishiki", "title", "updated_at", "created_at")
+    search_fields = ("title", "owner__username", "meishiki__name")
+    list_filter = ("created_at", "updated_at")
+    inlines = [ChatMessageInline]
+
+
 admin.site.register(Bunseki, BunsekiAdmin)
 admin.site.register(Wiki, WikiAdmin)
 # Register your models here.
 admin.site.register(Meishiki)
+admin.site.register(ChatSession, ChatSessionAdmin)
 # @admin.register(Wiki)
 # class WikiAdmin(admin.ModelAdmin):    z
 #     list_display = ('key', 'tag')

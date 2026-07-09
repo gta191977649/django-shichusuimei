@@ -4,6 +4,7 @@ import React from 'react';
 
 export default function Element(props) {
   const displayName = props.name === "不明" ? "？" : props.name;
+  const isInteractive = Boolean(props.onClick);
 
   // Define a function to map element names to colors
   const getElementColor = (element) => {
@@ -29,7 +30,24 @@ export default function Element(props) {
   // Return the JSX with dynamic styling based on the element color
   return (
     <ruby className='text-element'>
-      <span onClick={props.onClick} style={{ color: color, fontWeight: 700 }}>{displayName}</span><rt className='vt'>{props.tsuhen}</rt>
+      <span
+        onClick={props.onClick}
+        onKeyDown={(event) => {
+          if (!isInteractive) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            props.onClick?.(event);
+          }
+        }}
+        role={isInteractive ? "button" : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        title={props.title}
+        aria-label={props.ariaLabel}
+        className={props.className}
+        style={{ color: color, fontWeight: 700 }}
+      >
+        {displayName}
+      </span><rt className='vt'>{props.tsuhen}</rt>
     </ruby>
   );
 }

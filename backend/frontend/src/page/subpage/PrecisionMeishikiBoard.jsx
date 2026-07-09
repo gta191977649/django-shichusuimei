@@ -5,6 +5,7 @@ import Element from "../../components/Element";
 const EMPTY_FLOW_ITEMS = { current_index: 0, items: [] };
 const EMPTY_RELATIONS = [];
 const UNKNOWN_PILLAR_TEXT = "不明";
+const NATAL_INSIGHT_COLUMN_KEYS = new Set(["year", "month", "day", "time"]);
 const VALID_STEMS = new Set(["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]);
 const VALID_BRANCHES = new Set(["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]);
 const KAN_RELATION_TABLES = [
@@ -28,6 +29,13 @@ const SANHE_RELATION_TABLES = [
   { type: "三合局", members: ["寅", "午", "戌"], to: "火" },
   { type: "三合局", members: ["巳", "酉", "丑"], to: "金" },
 ];
+const SANHUI_RELATION_TABLES = [
+  { type: "三会局", members: ["亥", "子", "丑"], to: "水" },
+  { type: "三会局", members: ["寅", "卯", "辰"], to: "木" },
+  { type: "三会局", members: ["巳", "午", "未"], to: "火" },
+  { type: "三会局", members: ["申", "酉", "戌"], to: "金" },
+];
+const HE_LIKE_RELATION_TYPES = new Set(["干合", "支合", "三合局", "三会局", "半合"]);
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -41,7 +49,7 @@ const pairMatches = (left, right, pair) =>
 
 const formatRelationLabel = (relation) => {
   if (!relation) return "";
-  if (relation.to && relation.type && relation.type.includes("合")) {
+  if (relation.to && relation.type && HE_LIKE_RELATION_TYPES.has(relation.type)) {
     return `${relation.type}化${relation.to}`;
   }
   if (relation.to && relation.type) {
@@ -55,10 +63,10 @@ const buildRelations = (columns, realm) => {
   const tables = realm === "kan" ? KAN_RELATION_TABLES : SHI_RELATION_TABLES;
   const valueKey = realm === "kan" ? "stem" : "branch";
   const relations = [];
-  const sanhePairKeys = new Set();
+  const fullGroupPairKeys = new Set();
 
   if (realm === "shi") {
-    SANHE_RELATION_TABLES.forEach((table) => {
+    [...SANHE_RELATION_TABLES, ...SANHUI_RELATION_TABLES].forEach((table) => {
       const indexes = [];
       const elements = [];
       table.members.forEach((member) => {
@@ -72,7 +80,7 @@ const buildRelations = (columns, realm) => {
       if (indexes.length !== table.members.length) return;
       table.members.forEach((left, leftIndex) => {
         table.members.slice(leftIndex + 1).forEach((right) => {
-          sanhePairKeys.add([left, right].sort().join("-"));
+          fullGroupPairKeys.add([left, right].sort().join("-"));
         });
       });
       relations.push({
@@ -99,7 +107,7 @@ const buildRelations = (columns, realm) => {
       tables.forEach((table) => {
         const matchedPair = table.pairs.find((pair) => pairMatches(left, right, pair));
         if (!matchedPair) return;
-        if (table.type === "半合" && sanhePairKeys.has([left, right].sort().join("-"))) return;
+        if (table.type === "半合" && fullGroupPairKeys.has([left, right].sort().join("-"))) return;
         relations.push({
           key: `${realm}-${leftIndex}-${rightIndex}-${table.type}`,
           realm,
@@ -137,19 +145,38 @@ const normalizeSelectionPayload = (source) => ({
     0,
 });
 
-const renderElementRuby = (value, tsuhen = "", className = "") => (
-  <div className={`pd-element-slot ${className}`.trim()}>
-    <Element name={value || "・"} tsuhen={tsuhen || ""} />
+const renderElementRuby = (value, tsuhen = "", className = "", clickConfig = null) => (
+  <div
+    className={`pd-element-slot ${className}${clickConfig ? " is-insight-enabled" : ""}`.trim()}
+    data-insight-key={clickConfig?.insightKey || undefined}
+  >
+    <Element
+      name={value || "・"}
+      tsuhen={tsuhen || ""}
+      onClick={clickConfig?.onClick}
+      title={clickConfig?.title}
+      ariaLabel={clickConfig?.ariaLabel}
+      className={clickConfig ? "pd-element-trigger" : undefined}
+    />
   </div>
 );
 
-const renderZoukanLines = (zoukan = []) => (
+const renderZoukanLines = (zoukan = [], getClickConfig = null) => (
   <div className="pd-board-zoukan">
-    {[2, 1, 0].map((index) => {
+    {[
+      { index: 2, part: "hidden_primary" },
+      { index: 1, part: "hidden_middle" },
+      { index: 0, part: "hidden_residual" },
+    ].map(({ index, part }) => {
       const item = zoukan[index] || {};
       return (
         <div key={`zoukan-${index}`} className="pd-board-zoukan-line">
-          {renderElementOrBlank(item.element, item.tsuhen, "pd-zoukan-element-ruby")}
+          {renderElementOrBlank(
+            item.element,
+            item.tsuhen,
+            "pd-zoukan-element-ruby",
+            getClickConfig ? getClickConfig(part, item.element, item.tsuhen) : null
+          )}
         </div>
       );
     })}
@@ -167,9 +194,9 @@ const renderOverviewCell = (content, className = "", style = undefined) => (
   <div className={`pd-overview-cell ${className}`.trim()} style={style}>{content}</div>
 );
 
-const renderElementOrBlank = (value, tsuhen = "", className = "") =>
+const renderElementOrBlank = (value, tsuhen = "", className = "", clickConfig = null) =>
   value ? (
-    renderElementRuby(value, tsuhen, className)
+    renderElementRuby(value, tsuhen, className, clickConfig)
   ) : (
     <div className={`pd-element-slot ${className}`.trim()}>
       <span className="pd-element-empty" aria-hidden="true" />
@@ -179,6 +206,18 @@ const renderElementOrBlank = (value, tsuhen = "", className = "") =>
 const renderTopStarText = (value, className = "") => (
   <div className={`pd-top-star-text ${className}`.trim()}>{value || " "}</div>
 );
+
+const collectRelationPoints = (containerNode, relationId, gridRect) =>
+  Array.from(containerNode.querySelectorAll(`[data-relation-id="${relationId}"]`))
+    .map((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        column: Number(node.getAttribute("data-relation-column") || 0),
+        x: rect.left + rect.width / 2 - gridRect.left + containerNode.scrollLeft,
+        y: rect.top + rect.height / 2 - gridRect.top,
+      };
+    })
+    .sort((left, right) => left.column - right.column);
 
 const padFlowItems = (items, targetLength, prefix) => {
   const padded = [...items];
@@ -198,7 +237,12 @@ const padFlowItems = (items, targetLength, prefix) => {
   return padded;
 };
 
-export default function PrecisionMeishikiBoard({ data, requestInput }) {
+export default function PrecisionMeishikiBoard({
+  data,
+  requestInput,
+  elementInsightsAvailable = false,
+  onElementClick = null,
+}) {
   const precision = data?.precision_chart;
   const natal = useMemo(() => precision?.natal || {}, [precision?.natal]);
   const yearGroups = useMemo(() => data?.daiun_table?.year_table || [], [data?.daiun_table?.year_table]);
@@ -429,6 +473,31 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
     },
   ], [currentFlowDay, selection?.flowMonth, selection?.flowYear, currentDaiun, data, natal]);
 
+  const buildInsightClickConfig = useCallback(
+    (columnKey, part, symbol, tsuhen) => {
+      if (typeof onElementClick !== "function") return null;
+      if (!NATAL_INSIGHT_COLUMN_KEYS.has(columnKey)) return null;
+      if (!symbol || symbol === UNKNOWN_PILLAR_TEXT) return null;
+
+      const insightKey = `${columnKey}.${part}`;
+      return {
+        insightKey,
+        title: elementInsightsAvailable ? "AI 命式要素解読を開く" : "AI 解読を先に実行してください",
+        ariaLabel: `AI 命式要素解読: ${insightKey}`,
+        onClick: () =>
+          onElementClick({
+            key: insightKey,
+            pillar: columnKey,
+            part,
+            symbol,
+            tsuhen: tsuhen || "",
+            available: elementInsightsAvailable,
+          }),
+      };
+    },
+    [elementInsightsAvailable, onElementClick]
+  );
+
   const { kanRelations, shiRelations } = useMemo(
     () => ({
       kanRelations: buildRelations(overviewColumns, "kan"),
@@ -457,25 +526,15 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
     const nextLines = [];
     const collectLines = (relations, prefix) => {
       relations.forEach((relation, index) => {
-        const startEl = gridNode.querySelector(`.pd-relation-${prefix}-${index}-start`);
-        const endEl = gridNode.querySelector(`.pd-relation-${prefix}-${index}-end`);
-        if (!startEl || !endEl) return;
-
-        const startRect = startEl.getBoundingClientRect();
-        const endRect = endEl.getBoundingClientRect();
-        const x1 = startRect.left + startRect.width / 2 - gridRect.left + gridNode.scrollLeft;
-        const y1 = startRect.top + startRect.height / 2 - gridRect.top;
-        const x2 = endRect.left + endRect.width / 2 - gridRect.left + gridNode.scrollLeft;
-        const y2 = endRect.top + endRect.height / 2 - gridRect.top;
+        const relationId = `pd-relation-${prefix}-${index}`;
+        const points = collectRelationPoints(gridNode, relationId, gridRect);
+        if (points.length < 2) return;
 
         nextLines.push({
           key: relation.key,
           type: relation.type,
           label: formatRelationLabel(relation),
-          x1,
-          y1,
-          x2,
-          y2,
+          points,
         });
       });
     };
@@ -580,6 +639,8 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
                   <div className="pd-relation-marker-stack">
                     <span
                       className={`pd-relation-marker pd-relation-${prefix}-${relationIndex}-${markerSide}`}
+                      data-relation-id={`pd-relation-${prefix}-${relationIndex}`}
+                      data-relation-column={columnIndex}
                       title={`${relationTitle} ${relationLabel}`}
                     >
                       {markerElement}
@@ -788,7 +849,12 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
               {renderOverviewCell("天干", "pd-overview-side")}
               {overviewColumns.map((column) =>
                 renderOverviewCell(
-                  renderElementOrBlank(column.stem, column.topStar, "pd-overview-element-ruby"),
+                  renderElementOrBlank(
+                    column.stem,
+                    column.topStar,
+                    "pd-overview-element-ruby",
+                    buildInsightClickConfig(column.key, "stem", column.stem, column.topStar)
+                  ),
                   "pd-overview-main"
                 )
               )}
@@ -796,7 +862,12 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
               {renderOverviewCell("地支", "pd-overview-side")}
               {overviewColumns.map((column) =>
                 renderOverviewCell(
-                  renderElementOrBlank(column.branch, column.shi_tsuhen, "pd-overview-element-ruby"),
+                  renderElementOrBlank(
+                    column.branch,
+                    column.shi_tsuhen,
+                    "pd-overview-element-ruby",
+                    buildInsightClickConfig(column.key, "branch", column.branch, column.shi_tsuhen)
+                  ),
                   "pd-overview-main"
                 )
               )}
@@ -810,7 +881,14 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
               )}
 
               {renderOverviewCell("蔵干", "pd-overview-side pd-overview-side-top")}
-              {overviewColumns.map((column) => renderOverviewCell(renderZoukanLines(column.zoukan), "pd-overview-zoukan"))}
+              {overviewColumns.map((column) =>
+                renderOverviewCell(
+                  renderZoukanLines(column.zoukan, (part, symbol, tsuhen) =>
+                    buildInsightClickConfig(column.key, part, symbol, tsuhen)
+                  ),
+                  "pd-overview-zoukan"
+                )
+              )}
 
               {renderOverviewCell("星運", "pd-overview-side")}
               {overviewColumns.map((column) => renderOverviewCell(column.seiun || " "))}
@@ -833,12 +911,26 @@ export default function PrecisionMeishikiBoard({ data, requestInput }) {
               aria-hidden="true"
             >
               {relationLines.map((line) => {
-                const midX = (line.x1 + line.x2) / 2;
-                const midY = (line.y1 + line.y2) / 2;
+                const firstPoint = line.points[0];
+                const lastPoint = line.points[line.points.length - 1];
+                const midX = (firstPoint.x + lastPoint.x) / 2;
+                const midY = (firstPoint.y + lastPoint.y) / 2;
                 const labelWidth = Math.max(36, String(line.label || "").length * 12 + 12);
                 return (
                   <g key={line.key}>
-                    <line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} className="pd-overview-relation-line" />
+                    {line.points.slice(0, -1).map((point, pointIndex) => {
+                      const nextPoint = line.points[pointIndex + 1];
+                      return (
+                        <line
+                          key={`${line.key}-segment-${pointIndex}`}
+                          x1={point.x}
+                          y1={point.y}
+                          x2={nextPoint.x}
+                          y2={nextPoint.y}
+                          className="pd-overview-relation-line"
+                        />
+                      );
+                    })}
                     <rect
                       x={midX - labelWidth / 2}
                       y={midY - 9}

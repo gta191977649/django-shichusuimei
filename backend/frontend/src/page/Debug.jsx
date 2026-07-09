@@ -8,6 +8,7 @@ import CustomProgressBar from '../components/CustomProgressBar';
 import FiveElementChart from '../components/FiveElementChart';
 import { getFiveElementEnergy } from '../common';
 import GoukaAnlysis from '../components/GoukaAnlysis';
+import ElementFlow from '../components/ElementFlow';
 import ProgressBar from 'react-bootstrap/ProgressBar';
 import Tab from 'react-bootstrap/Tab';
 import Tabs from 'react-bootstrap/Tabs';
@@ -313,7 +314,9 @@ export default function Debug({ profile }) {
           ) : null}
         </Tab>
         <Tab eventKey="liutong" title="流通">
-          In Development
+          {activeTab === 'liutong' && response ? (
+            <ElementFlow tableWidth={tableWidth} response={response} active={activeTab === 'liutong'} />
+          ) : "-"}
         </Tab>
       </Tabs>
 
@@ -411,14 +414,6 @@ export default function Debug({ profile }) {
                       {activeEnergyAdjustments.slice(0, 10).map((item, index) => (
                         <li key={`energy-adjustment-${index}`}>
                           {item.note}（{item.delta > 0 ? "+" : ""}{item.delta.toFixed(2)}）
-                          {item.season_factor ? (
-                            <>
-                              {' '}
-                              月令: {item.season_month}
-                              / 係数: {Number(item.season_coefficient).toFixed(3)}
-                              / 調制: {Number(item.season_factor).toFixed(3)}
-                            </>
-                          ) : null}
                         </li>
                       ))}
                     </ul>

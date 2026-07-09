@@ -1,10 +1,15 @@
 import datetime
+import json
 from zoneinfo import ZoneInfo
 
 import cnlunar
 from cnlunar.config import the60HeavenlyEarth
 from django.core.cache import cache
+from django.db.models import Count, OuterRef, Subquery
+from django.db import transaction
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -12,11 +17,36 @@ from rest_framework.views import APIView
 
 from .meishiki import Meishi
 from .model.bunseki import Bunseki
+from .model.chat import ChatMessage, ChatSession, DEFAULT_CHAT_SESSION_TITLE
 from .model.meishiki import Meishiki
+from .serializers import ChatMessageSerializer, ChatSessionSummarySerializer
 from .service.deepseek import DeepseekError, analyze_bazi
-from .service.prompt_builder import build_prompt_from_meishiki
+from .service.llm_chat import (
+    LLMChatError,
+    generate_chat_reply_payload,
+    stream_chat_reply_events,
+)
+from .service.prompt_builder import (
+    build_element_insight_specs,
+    build_element_insight_prompt,
+    build_chat_prompt_from_meishiki,
+    build_prompt_from_meishiki,
+)
 
+MAX_CHAT_HISTORY_MESSAGES = 8
+MAX_CHAT_QUESTION_LENGTH = 2000
+MAX_CHAT_TITLE_LENGTH = 30
+DEFAULT_CHAT_MESSAGE_PAGE_SIZE = 40
+MAX_CHAT_MESSAGE_PAGE_SIZE = 100
 LOCK_TTL_SEC = 15 * 60  # lock for 15min (long-running)
+BUNSEKI_PROGRESS_STEPS = {
+    "loading_chart": {"progress": 10, "label": "命式データを確認中…"},
+    "building_prompt": {"progress": 25, "label": "解読プロンプトを準備中…"},
+    "generating_sections": {"progress": 60, "label": "AI解読を生成中…"},
+    "generating_elements": {"progress": 85, "label": "命式要素解読を生成中…"},
+    "saving": {"progress": 95, "label": "結果を保存中…"},
+    "completed": {"progress": 100, "label": "AI解読が完了しました。"},
+}
 JST = ZoneInfo("Asia/Tokyo")
 PRECISION_MONTH_TERMS = [
     {"key": "立春", "label": "立春"},
@@ -461,6 +491,369 @@ def _build_precision_chart_payload(meishi):
     }
 
 
+def _get_accessible_meishiki(request, meishiki_id):
+    meishiki_queryset = Meishiki.objects.all()
+    if not (request.user.is_staff or request.user.is_superuser):
+        meishiki_queryset = meishiki_queryset.filter(owner=request.user)
+    return get_object_or_404(meishiki_queryset, pk=meishiki_id)
+
+
+def _is_admin_user(user):
+    return bool(user and (user.is_staff or user.is_superuser))
+
+
+def _require_admin_user(request):
+    if _is_admin_user(request.user):
+        return None
+    return Response({"detail": "Only admin users can use AI chat."}, status=status.HTTP_403_FORBIDDEN)
+
+
+def _build_chat_session_title(first_question=""):
+    trimmed = str(first_question or "").strip()
+    if not trimmed:
+        return DEFAULT_CHAT_SESSION_TITLE
+    return trimmed[:MAX_CHAT_TITLE_LENGTH]
+
+
+def _serialize_chat_history_records(history_messages):
+    return [
+        {"role": message.role, "content": message.content}
+        for message in history_messages
+        if message.role in {ChatMessage.ROLE_USER, ChatMessage.ROLE_ASSISTANT} and str(message.content or "").strip()
+    ]
+
+
+def _touch_chat_session(session, *, title=None):
+    update_fields = ["updated_at"]
+    if title is not None and title != session.title:
+        session.title = title
+        update_fields.append("title")
+    session.updated_at = timezone.now()
+    session.save(update_fields=update_fields)
+
+
+def _get_owned_chat_session(request, session_id, *, prefetch_messages=False):
+    queryset = ChatSession.objects.select_related("meishiki", "owner")
+    if prefetch_messages:
+        queryset = queryset.prefetch_related("messages")
+    return get_object_or_404(queryset, id=session_id, owner=request.user)
+
+
+def _build_chat_session_summary_queryset(user, meishiki):
+    latest_message_queryset = ChatMessage.objects.filter(session_id=OuterRef("pk")).order_by("-id")
+    return (
+        ChatSession.objects.filter(owner=user, meishiki=meishiki)
+        .select_related("meishiki", "owner")
+        .annotate(
+            message_count=Count("messages"),
+            last_message_preview=Subquery(latest_message_queryset.values("content")[:1]),
+            last_message_created_at=Subquery(latest_message_queryset.values("created_at")[:1]),
+        )
+        .order_by("-updated_at", "-id")
+    )
+
+
+def _parse_message_page_size(raw_limit):
+    if raw_limit in (None, ""):
+        return DEFAULT_CHAT_MESSAGE_PAGE_SIZE
+    try:
+        limit = int(raw_limit)
+    except (TypeError, ValueError):
+        raise ValueError("limit must be an integer")
+    if limit <= 0:
+        raise ValueError("limit must be greater than 0")
+    return min(limit, MAX_CHAT_MESSAGE_PAGE_SIZE)
+
+
+def _parse_message_cursor(raw_before_id):
+    if raw_before_id in (None, ""):
+        return None
+    try:
+        before_id = int(raw_before_id)
+    except (TypeError, ValueError):
+        raise ValueError("before_id must be an integer")
+    if before_id <= 0:
+        raise ValueError("before_id must be greater than 0")
+    return before_id
+
+
+def _serialize_chat_message_payload(message):
+    if not message:
+        return None
+    return ChatMessageSerializer(message).data
+
+
+def _build_bazi_from_meishiki_record(meishiki):
+    dt_value = getattr(meishiki, "birthDate", None) or getattr(meishiki, "datetime", None)
+    if isinstance(dt_value, datetime.datetime):
+        date_parts = (dt_value.year, dt_value.month, dt_value.day)
+        time_parts = (dt_value.hour, dt_value.minute)
+    elif isinstance(dt_value, str):
+        dt_value = datetime.datetime.fromisoformat(dt_value.replace("Z", "+00:00"))
+        date_parts = (dt_value.year, dt_value.month, dt_value.day)
+        time_parts = (dt_value.hour, dt_value.minute)
+    else:
+        raise ValueError("Cannot parse datetime from Meishiki record.")
+
+    raw_gender = getattr(meishiki, "gender", "M")
+    gender = 1 if str(raw_gender).lower() in ["m", "male", "ç”·", "1"] else 0
+    date_time_obj = datetime.datetime(
+        year=date_parts[0],
+        month=date_parts[1],
+        day=date_parts[2],
+        hour=time_parts[0],
+        minute=time_parts[1],
+    )
+    birth_time_unknown = bool(getattr(meishiki, "birthTimeUnknown", False))
+    return _apply_birth_time_context(
+        Meishi(date_time_obj, int(gender)),
+        birth_time_unknown=birth_time_unknown,
+        birth_time_display=UNKNOWN_BIRTH_TIME_TEXT if birth_time_unknown else f"{time_parts[0]:02d}:{time_parts[1]:02d}",
+    )
+
+
+def _format_existing_bunseki(content):
+    if not isinstance(content, list):
+        return str(content or "")
+
+    lines = []
+    for item in content:
+        if not isinstance(item, dict):
+            lines.append(str(item))
+            continue
+        entity = item.get("entity") or "section"
+        body = item.get("content") or ""
+        lines.append(f"[{entity}]\n{body}")
+    return "\n\n".join(lines)
+
+
+def _sanitize_chat_history(history):
+    if not isinstance(history, list):
+        return []
+
+    sanitized = []
+    for item in history[-MAX_CHAT_HISTORY_MESSAGES:]:
+        if not isinstance(item, dict):
+            continue
+        role = item.get("role")
+        content = str(item.get("content") or "").strip()
+        if role not in {"user", "assistant"} or not content:
+            continue
+        sanitized.append({"role": role, "content": content[:2000]})
+    return sanitized
+
+
+def _normalize_bunseki_sections(raw_sections):
+    if not isinstance(raw_sections, list):
+        return []
+
+    normalized = []
+    for item in raw_sections:
+        if not isinstance(item, dict):
+            continue
+        entity = str(item.get("entity") or "").strip()
+        content = str(item.get("content") or "").strip()
+        if not entity or not content:
+            continue
+        normalized.append({"entity": entity, "content": content})
+    return normalized
+
+
+def _normalize_element_insights(raw_insights, bazi):
+    if not isinstance(raw_insights, dict):
+        return {}
+
+    normalized = {}
+    for spec in build_element_insight_specs(bazi):
+        raw_item = raw_insights.get(spec["key"])
+        if raw_item is None:
+            continue
+
+        if isinstance(raw_item, str):
+            title = f"{spec['pillarLabel']}{spec['partLabel']} {spec['symbol']}"
+            content = raw_item.strip()
+        elif isinstance(raw_item, dict):
+            title = str(raw_item.get("title") or f"{spec['pillarLabel']}{spec['partLabel']} {spec['symbol']}").strip()
+            content = str(
+                raw_item.get("content") or raw_item.get("text") or raw_item.get("description") or ""
+            ).strip()
+        else:
+            continue
+
+        if not content:
+            continue
+
+        normalized[spec["key"]] = {
+            **spec,
+            "title": title,
+            "content": content,
+        }
+
+    return normalized
+
+
+def _normalize_bunseki_payload(raw_payload, bazi):
+    if isinstance(raw_payload, dict):
+        raw_sections = raw_payload.get("sections") or raw_payload.get("content") or []
+        raw_insights = raw_payload.get("element_insights") or {}
+    elif isinstance(raw_payload, list):
+        raw_sections = raw_payload
+        raw_insights = {}
+    else:
+        raw_sections = []
+        raw_insights = {}
+
+    return {
+        "content": _normalize_bunseki_sections(raw_sections),
+        "element_insights": _normalize_element_insights(raw_insights, bazi),
+    }
+
+
+def _normalize_element_insight_payload(raw_payload, bazi):
+    if isinstance(raw_payload, dict) and isinstance(raw_payload.get("element_insights"), dict):
+        raw_payload = raw_payload.get("element_insights")
+    return _normalize_element_insights(raw_payload, bazi)
+
+
+def _serialize_bunseki_record(record):
+    return {
+        "content": record.content,
+        "reason": getattr(record, "reason", ""),
+        "element_insights": getattr(record, "element_insights", {}) or {},
+        "created_at": record.created_at.isoformat(),
+    }
+
+
+def _emit_bunseki_progress(progress_callback, stage):
+    if not progress_callback:
+        return
+
+    step = BUNSEKI_PROGRESS_STEPS[stage]
+    progress_callback(
+        {
+            "type": "progress",
+            "stage": stage,
+            "progress": step["progress"],
+            "label": step["label"],
+        }
+    )
+
+
+def _generate_bunseki_record(meishiki, meishiki_id, progress_callback=None):
+    _emit_bunseki_progress(progress_callback, "loading_chart")
+    bazi = _build_bazi_from_meishiki_record(meishiki)
+
+    _emit_bunseki_progress(progress_callback, "building_prompt")
+    messages = build_prompt_from_meishiki(bazi)
+
+    _emit_bunseki_progress(progress_callback, "generating_sections")
+    result = analyze_bazi(messages=messages, stream_debug=True)
+    normalized_payload = _normalize_bunseki_payload(result.get("payload", []), bazi)
+    reason = result.get("reason", "")
+
+    element_insights = {}
+    if normalized_payload["content"]:
+        _emit_bunseki_progress(progress_callback, "generating_elements")
+        try:
+            insight_messages = build_element_insight_prompt(bazi, normalized_payload["content"])
+            insight_result = analyze_bazi(messages=insight_messages, stream_debug=True)
+            element_insights = _normalize_element_insight_payload(insight_result.get("payload", {}), bazi)
+        except DeepseekError as exc:
+            print(f"Element insight generation skipped: {exc}")
+        except Exception as exc:
+            print(f"Element insight generation failed: {exc}")
+
+    _emit_bunseki_progress(progress_callback, "saving")
+    record = Bunseki.objects.create(
+        meishiki_id=meishiki_id,
+        content=normalized_payload["content"],
+        element_insights=element_insights,
+        reason=reason,
+    )
+    payload = _serialize_bunseki_record(record)
+    _emit_bunseki_progress(progress_callback, "completed")
+    return payload
+
+
+def _build_chat_messages(bazi, existing_bunseki, question, history=None, chart_context=None):
+    messages = build_chat_prompt_from_meishiki(bazi, precision_chart=_build_precision_chart_payload(bazi))
+
+    if chart_context:
+        try:
+            chart_text = json.dumps(chart_context, ensure_ascii=False, default=str)[:12000]
+            messages.append({"role": "system", "content": f"<当前页面命盘快照>\n{chart_text}"})
+        except TypeError:
+            pass
+
+    if existing_bunseki:
+        messages.append(
+            {
+                "role": "system",
+                "content": f"<既存AI解读>\n{_format_existing_bunseki(existing_bunseki.content)[:12000]}",
+            }
+        )
+
+    messages.extend(_sanitize_chat_history(history))
+    messages.append({"role": "user", "content": question})
+    return messages
+
+
+def _build_chat_messages_for_meishiki(request, meishiki_id, question, history=None, chart_context=None):
+    meishiki = _get_accessible_meishiki(request, meishiki_id)
+    bazi = _build_bazi_from_meishiki_record(meishiki)
+    existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
+    messages = _build_chat_messages(
+        bazi=bazi,
+        existing_bunseki=existing,
+        question=question,
+        history=history,
+        chart_context=chart_context,
+    )
+    _print_chat_reference(messages)
+    return messages
+
+
+def _print_chat_reference(messages):
+    print("\n========== AI CHAT REFERENCE BEGIN ==========")
+    for index, message in enumerate(messages, start=1):
+        role = message.get("role", "-")
+        content = message.get("content", "")
+        print(f"[{index}] role={role}")
+        print(content)
+        print("----------")
+    print("========== AI CHAT REFERENCE END ==========\n")
+
+
+def _build_chat_messages_from_request(request):
+    admin_error = _require_admin_user(request)
+    if admin_error:
+        return None, admin_error
+
+    meishiki_id = request.data.get("meishiki_id")
+    question = str(request.data.get("question") or "").strip()
+
+    if not meishiki_id:
+        return None, Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+    if not question:
+        return None, Response({"detail": "question is required"}, status=status.HTTP_400_BAD_REQUEST)
+    if len(question) > MAX_CHAT_QUESTION_LENGTH:
+        return None, Response({"detail": "question is too long"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        messages = _build_chat_messages_for_meishiki(
+            request=request,
+            meishiki_id=meishiki_id,
+            question=question,
+            history=request.data.get("history"),
+            chart_context=request.data.get("chart_context"),
+        )
+        return messages, None
+    except ValueError as exc:
+        return None, Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as exc:
+        return None, Response({"detail": f"Failed to build chat context: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
 class BunsekiView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -472,21 +865,11 @@ class BunsekiView(APIView):
         if force_refresh and not (request.user.is_staff or request.user.is_superuser):
             return Response({"detail": "Only admin users can force regenerate bunseki."}, status=status.HTTP_403_FORBIDDEN)
 
-        meishiki_queryset = Meishiki.objects.all()
-        if not (request.user.is_staff or request.user.is_superuser):
-            meishiki_queryset = meishiki_queryset.filter(owner=request.user)
-        meishiki = get_object_or_404(meishiki_queryset, pk=meishiki_id)
+        meishiki = _get_accessible_meishiki(request, meishiki_id)
 
         existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
         if existing and not force_refresh:
-            return Response(
-                {
-                    "content": existing.content,
-                    "reason": getattr(existing, "reason", ""),
-                    "created_at": existing.created_at.isoformat(),
-                },
-                status=status.HTTP_200_OK,
-            )
+            return Response(_serialize_bunseki_record(existing), status=status.HTTP_200_OK)
 
         existing_only = str(request.query_params.get("existing_only", "")).lower() in ["1", "true", "yes"]
         if existing_only:
@@ -501,56 +884,343 @@ class BunsekiView(APIView):
             )
 
         try:
-            dt_value = getattr(meishiki, "birthDate", None) or getattr(meishiki, "datetime", None)
-            if isinstance(dt_value, datetime.datetime):
-                date_parts = (dt_value.year, dt_value.month, dt_value.day)
-                time_parts = (dt_value.hour, dt_value.minute)
-            elif isinstance(dt_value, str):
-                dt_value = datetime.datetime.fromisoformat(dt_value.replace("Z", "+00:00"))
-                date_parts = (dt_value.year, dt_value.month, dt_value.day)
-                time_parts = (dt_value.hour, dt_value.minute)
-            else:
-                return Response({"detail": "Cannot parse datetime from Meishiki record."}, status=status.HTTP_400_BAD_REQUEST)
-
-            raw_gender = getattr(meishiki, "gender", "M")
-            gender = 1 if str(raw_gender).lower() in ["m", "male", "男", "1"] else 0
-            date_time_obj = datetime.datetime(
-                year=date_parts[0],
-                month=date_parts[1],
-                day=date_parts[2],
-                hour=time_parts[0],
-                minute=time_parts[1],
-            )
-            birth_time_unknown = bool(getattr(meishiki, "birthTimeUnknown", False))
-            bazi = _apply_birth_time_context(
-                Meishi(date_time_obj, int(gender)),
-                birth_time_unknown=birth_time_unknown,
-                birth_time_display=(
-                    UNKNOWN_BIRTH_TIME_TEXT if birth_time_unknown else f"{time_parts[0]:02d}:{time_parts[1]:02d}"
-                ),
-            )
-
-            try:
-                messages = build_prompt_from_meishiki(bazi)
-            except Exception as exc:
-                return Response({"detail": f"Failed to build bazi text: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
-
-            try:
-                result = analyze_bazi(messages=messages, stream_debug=True)
-                content = result.get("payload", [])
-                reason = result.get("reason", "")
-            except DeepseekError as exc:
-                return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-            except Exception as exc:
-                return Response({"detail": f"AI error: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
-
-            obj = Bunseki.objects.create(meishiki_id=meishiki_id, content=content, reason=reason)
-            return Response(
-                {"content": obj.content, "reason": obj.reason, "created_at": obj.created_at.isoformat()},
-                status=status.HTTP_201_CREATED,
-            )
+            payload = _generate_bunseki_record(meishiki, meishiki_id)
+            return Response(payload, status=status.HTTP_201_CREATED)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except DeepseekError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            return Response({"detail": f"AI error: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
         finally:
             cache.delete(lock_key)
+
+
+class BunsekiStreamView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        meishiki_id = request.data.get("meishiki_id")
+        if not meishiki_id:
+            return Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        force_refresh = _parse_bool(request.data.get("force"))
+        if force_refresh and not (request.user.is_staff or request.user.is_superuser):
+            return Response({"detail": "Only admin users can force regenerate bunseki."}, status=status.HTTP_403_FORBIDDEN)
+
+        meishiki = _get_accessible_meishiki(request, meishiki_id)
+        existing = Bunseki.objects.filter(meishiki_id=meishiki_id).order_by("-id").first()
+
+        def encode_event(event):
+            return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        if existing and not force_refresh:
+
+            def cached_stream():
+                step = BUNSEKI_PROGRESS_STEPS["completed"]
+                yield encode_event(
+                    {
+                        "type": "progress",
+                        "stage": "completed",
+                        "progress": step["progress"],
+                        "label": step["label"],
+                    }
+                )
+                yield encode_event({"type": "result", "payload": _serialize_bunseki_record(existing)})
+
+            response = StreamingHttpResponse(cached_stream(), content_type="text/event-stream; charset=utf-8")
+            response["Cache-Control"] = "no-cache"
+            response["X-Accel-Buffering"] = "no"
+            return response
+
+        lock_key = f"bunseki:lock:{meishiki_id}"
+        if not cache.add(lock_key, "1", timeout=LOCK_TTL_SEC):
+            return Response({"detail": "AI解読は現在生成中です。"}, status=status.HTTP_409_CONFLICT)
+
+        def stream():
+            try:
+                yield encode_event({"type": "progress", "stage": "loading_chart", **BUNSEKI_PROGRESS_STEPS["loading_chart"]})
+                bazi = _build_bazi_from_meishiki_record(meishiki)
+
+                yield encode_event(
+                    {"type": "progress", "stage": "building_prompt", **BUNSEKI_PROGRESS_STEPS["building_prompt"]}
+                )
+                messages = build_prompt_from_meishiki(bazi)
+
+                yield encode_event(
+                    {"type": "progress", "stage": "generating_sections", **BUNSEKI_PROGRESS_STEPS["generating_sections"]}
+                )
+                result = analyze_bazi(messages=messages, stream_debug=True)
+                normalized_payload = _normalize_bunseki_payload(result.get("payload", []), bazi)
+                reason = result.get("reason", "")
+
+                element_insights = {}
+                if normalized_payload["content"]:
+                    yield encode_event(
+                        {
+                            "type": "progress",
+                            "stage": "generating_elements",
+                            **BUNSEKI_PROGRESS_STEPS["generating_elements"],
+                        }
+                    )
+                    try:
+                        insight_messages = build_element_insight_prompt(bazi, normalized_payload["content"])
+                        insight_result = analyze_bazi(messages=insight_messages, stream_debug=True)
+                        element_insights = _normalize_element_insight_payload(insight_result.get("payload", {}), bazi)
+                    except DeepseekError as exc:
+                        print(f"Element insight generation skipped: {exc}")
+                    except Exception as exc:
+                        print(f"Element insight generation failed: {exc}")
+
+                yield encode_event({"type": "progress", "stage": "saving", **BUNSEKI_PROGRESS_STEPS["saving"]})
+                record = Bunseki.objects.create(
+                    meishiki_id=meishiki_id,
+                    content=normalized_payload["content"],
+                    element_insights=element_insights,
+                    reason=reason,
+                )
+                yield encode_event({"type": "progress", "stage": "completed", **BUNSEKI_PROGRESS_STEPS["completed"]})
+                yield encode_event({"type": "result", "payload": _serialize_bunseki_record(record)})
+            except ValueError as exc:
+                yield encode_event({"type": "error", "detail": str(exc)})
+            except DeepseekError as exc:
+                yield encode_event({"type": "error", "detail": str(exc)})
+            except Exception as exc:
+                yield encode_event({"type": "error", "detail": f"AI error: {exc}"})
+            finally:
+                cache.delete(lock_key)
+
+        response = StreamingHttpResponse(stream(), content_type="text/event-stream; charset=utf-8")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+
+class BunsekiChatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        messages, error_response = _build_chat_messages_from_request(request)
+        if error_response:
+            return error_response
+
+        try:
+            payload = generate_chat_reply_payload(messages=messages)
+        except LLMChatError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            return Response({"detail": f"AI error: {exc}"}, status=status.HTTP_502_BAD_GATEWAY)
+
+        return Response(payload, status=status.HTTP_200_OK)
+
+
+class BunsekiChatStreamView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        messages, error_response = _build_chat_messages_from_request(request)
+        if error_response:
+            return error_response
+
+        def encode_event(event):
+            if isinstance(event, str):
+                event = {"type": "content", "delta": event}
+            return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        def stream():
+            try:
+                for event in stream_chat_reply_events(messages=messages):
+                    yield encode_event(event)
+            except LLMChatError as exc:
+                yield encode_event({"type": "error", "detail": str(exc)})
+
+        response = StreamingHttpResponse(stream(), content_type="text/event-stream; charset=utf-8")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+
+class ChatSessionListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        admin_error = _require_admin_user(request)
+        if admin_error:
+            return admin_error
+
+        meishiki_id = request.query_params.get("meishiki_id")
+        if not meishiki_id:
+            return Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        meishiki = _get_accessible_meishiki(request, meishiki_id)
+        sessions = _build_chat_session_summary_queryset(request.user, meishiki)
+        return Response(ChatSessionSummarySerializer(sessions, many=True).data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        admin_error = _require_admin_user(request)
+        if admin_error:
+            return admin_error
+
+        meishiki_id = request.data.get("meishiki_id")
+        if not meishiki_id:
+            return Response({"detail": "meishiki_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        meishiki = _get_accessible_meishiki(request, meishiki_id)
+        session = ChatSession.objects.create(
+            owner=request.user,
+            meishiki=meishiki,
+            title=DEFAULT_CHAT_SESSION_TITLE,
+        )
+        summary = _build_chat_session_summary_queryset(request.user, meishiki).get(id=session.id)
+        return Response(ChatSessionSummarySerializer(summary).data, status=status.HTTP_201_CREATED)
+
+
+class ChatSessionDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, session_id):
+        admin_error = _require_admin_user(request)
+        if admin_error:
+            return admin_error
+
+        session = _get_owned_chat_session(request, session_id)
+        session.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ChatSessionMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, session_id):
+        admin_error = _require_admin_user(request)
+        if admin_error:
+            return admin_error
+
+        session = _get_owned_chat_session(request, session_id)
+        try:
+            limit = _parse_message_page_size(request.query_params.get("limit"))
+            before_id = _parse_message_cursor(request.query_params.get("before_id"))
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = ChatMessage.objects.filter(session=session).order_by("-id")
+        if before_id is not None:
+            queryset = queryset.filter(id__lt=before_id)
+
+        page = list(queryset[: limit + 1])
+        has_more_older = len(page) > limit
+        if has_more_older:
+            page = page[:limit]
+        page.reverse()
+
+        return Response(
+            {
+                "messages": ChatMessageSerializer(page, many=True).data,
+                "has_more_older": has_more_older,
+                "oldest_message_id": page[0].id if page else None,
+                "newest_message_id": page[-1].id if page else None,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+class ChatSessionStreamView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        admin_error = _require_admin_user(request)
+        if admin_error:
+            return admin_error
+
+        session = _get_owned_chat_session(request, session_id, prefetch_messages=True)
+        question = str(request.data.get("question") or "").strip()
+        if not question:
+            return Response({"detail": "question is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if len(question) > MAX_CHAT_QUESTION_LENGTH:
+            return Response({"detail": "question is too long"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            history_messages = list(session.messages.all())
+            messages = _build_chat_messages_for_meishiki(
+                request=request,
+                meishiki_id=session.meishiki_id,
+                question=question,
+                history=_serialize_chat_history_records(history_messages),
+                chart_context=request.data.get("chart_context"),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({"detail": f"Failed to build chat context: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        has_user_messages = any(message.role == ChatMessage.ROLE_USER for message in history_messages)
+        next_title = _build_chat_session_title(question)
+
+        with transaction.atomic():
+            user_message = ChatMessage.objects.create(
+                session=session,
+                role=ChatMessage.ROLE_USER,
+                content=question,
+            )
+            if session.title == DEFAULT_CHAT_SESSION_TITLE and not has_user_messages:
+                _touch_chat_session(session, title=next_title)
+            else:
+                _touch_chat_session(session)
+        session.refresh_from_db(fields=["title", "updated_at"])
+
+        def encode_event(event):
+            if isinstance(event, str):
+                event = {"type": "content", "delta": event}
+            return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        def stream():
+            reasoning_parts = []
+            content_parts = []
+            assistant_saved = False
+
+            try:
+                for event in stream_chat_reply_events(messages=messages):
+                    event_type = event.get("type")
+                    if event_type == "reasoning":
+                        reasoning_parts.append(event.get("delta") or "")
+                    elif event_type == "content":
+                        content_parts.append(event.get("delta") or "")
+                    elif event_type == "done" and not assistant_saved:
+                        assistant_message = None
+                        final_content = "".join(content_parts)
+                        final_reasoning = "".join(reasoning_parts)
+                        if final_content or final_reasoning:
+                            assistant_message = ChatMessage.objects.create(
+                                session_id=session.id,
+                                role=ChatMessage.ROLE_ASSISTANT,
+                                content=final_content,
+                                reasoning=final_reasoning,
+                            )
+                            _touch_chat_session(session)
+                            session.refresh_from_db(fields=["title", "updated_at"])
+                        assistant_saved = True
+                        yield encode_event(
+                            {
+                                **event,
+                                "session_id": session.id,
+                                "title": session.title,
+                                "updated_at": session.updated_at.isoformat(),
+                                "user_message": _serialize_chat_message_payload(user_message),
+                                "assistant_message": _serialize_chat_message_payload(assistant_message),
+                            }
+                        )
+                        continue
+
+                    yield encode_event(event)
+            except LLMChatError as exc:
+                yield encode_event({"type": "error", "detail": str(exc)})
+            except Exception as exc:
+                yield encode_event({"type": "error", "detail": f"AI error: {exc}"})
+
+        response = StreamingHttpResponse(stream(), content_type="text/event-stream; charset=utf-8")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"
+        return response
 
 
 class CurrentUserView(APIView):

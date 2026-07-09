@@ -1,4 +1,17 @@
 frontend/node_modules
 backend/backend/__pycache__
 *.pyc
-backend/.env
+
+# Local environment files
+.env
+**/.env
+!.env.example
+
+# Local IDE and OS artifacts
+**/.DS_Store
+**/.idea/
+
+# Generated deployment bundles
+/deploy-dist-*.tar.gz
+/deploy-sync-*.tar.gz
+/deploy/*.tar.gz

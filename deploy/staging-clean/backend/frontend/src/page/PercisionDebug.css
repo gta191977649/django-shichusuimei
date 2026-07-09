@@ -1,0 +1,1971 @@
+.percision-debug {
+  color: #000;
+}
+
+.pd-screen-content {
+  display: block;
+}
+
+.pd-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #000;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.pd-title {
+  font-weight: 700;
+}
+
+.pd-title-sub {
+  margin-top: 4px;
+}
+
+.pd-counter {
+  flex-shrink: 0;
+  border: 1px solid #000;
+  padding: 6px 12px;
+  font-weight: 700;
+  background: #ccffcc;
+}
+
+.pd-panel {
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.pd-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #ccffcc;
+  border-bottom: 1px solid #000;
+}
+
+.pd-panel-title {
+  font-weight: 700;
+  font-size: 25px;
+}
+
+.pd-panel-caption {
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.pd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pd-action-form {
+  margin: 0;
+  padding: 14px;
+}
+
+.pd-action-button {
+  min-width: 112px;
+  border: 1px solid #000;
+  padding: 8px 14px;
+  font-weight: 700;
+  color: #000;
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.pd-action-button:hover:not(:disabled) {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #dfd9c1 100%);
+}
+
+.pd-action-button.is-active {
+  background-image: none;
+  background: #ccffcc;
+}
+
+.pd-action-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pd-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.pd-control-wrap {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #000;
+  padding: 0 8px;
+  background: #fff;
+}
+
+.pd-control-wrap-required {
+  background: #ffff99;
+  border: 1.5px solid #e64841;
+}
+
+.pd-control-input {
+  width: 100%;
+  min-height: 40px;
+}
+
+.pd-inline-note {
+  flex-shrink: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pd-tabs-nav {
+  margin: 12px 12px 0;
+}
+
+.pd-tab-shell {
+  border-top: none;
+  padding: 0 12px 12px;
+  background: #fff;
+}
+
+.pd-ai-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px;
+  padding: 10px 12px;
+  border: 1px solid #000;
+  background: #ffff99;
+}
+
+.pd-ai-status-progress {
+  align-items: flex-start;
+}
+
+.pd-ai-progress-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-ai-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.pd-ai-progress-track {
+  margin-top: 8px;
+  border: 1px solid #000;
+  background: #fff;
+  height: 12px;
+}
+
+.pd-ai-progress-bar {
+  height: 100%;
+  background: #000;
+}
+
+.pd-spinner {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 2px solid #999;
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: pd-spin 0.8s linear infinite;
+}
+
+.pd-empty-state {
+  margin: 12px;
+  padding: 14px;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.pd-ai-list,
+.pd-reason-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.pd-ai-row {
+  border: 1px solid #000;
+  background: #fff;
+  margin: 0;
+  padding: 12px;
+}
+
+.pd-ai-entity {
+  display: inline-block;
+  margin: 0;
+  padding: 0 8px;
+  border: 1px solid #000;
+  background: #ccffcc;
+  font-weight: 700;
+  width: auto;
+}
+
+.pd-ai-row-reason .pd-ai-entity {
+  background: #eeebde;
+}
+
+.pd-ai-content {
+  padding: 4px 0 0;
+}
+
+.pd-ai-content p:last-child {
+  margin-bottom: 0;
+}
+
+.pd-chat-session-toolbar {
+  padding: 12px 12px 0;
+}
+
+.pd-chat-session-panel {
+  padding: 12px;
+  border-bottom: 1px solid #000;
+}
+
+.pd-chat-session-panel.is-collapsed {
+  padding: 8px 12px;
+}
+
+.pd-chat-session-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pd-chat-session-panel.is-collapsed .pd-chat-session-head {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.pd-chat-session-summary {
+  min-width: 0;
+}
+
+.pd-chat-session-label {
+  font-weight: 700;
+}
+
+.pd-chat-session-caption {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.pd-chat-session-toggle {
+  flex: 0 0 auto;
+  border: 1px solid #000;
+  background: #fff;
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pd-chat-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pd-chat-session-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid #000;
+  background: #fff;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.pd-chat-session-item-active {
+  background: #eeebde;
+}
+
+.pd-chat-session-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-chat-session-title {
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.pd-chat-session-meta {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.pd-chat-session-delete {
+  flex: 0 0 auto;
+  border: 1px solid #000;
+  padding: 3px 8px;
+  background: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pd-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+}
+
+.pd-chat-empty {
+  margin: 0;
+}
+
+.pd-chat-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pd-chat-message-user {
+  flex-direction: row-reverse;
+}
+
+.pd-chat-role {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  border: 1px solid #000;
+  padding: 0;
+  border-radius: 50%;
+  text-align: center;
+  font-weight: 700;
+  background: #eeebde;
+  line-height: 1.2;
+}
+
+.pd-chat-bubble {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #000;
+  padding: 10px 12px;
+  background: #fff;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.pd-chat-message-user .pd-chat-bubble {
+  background: #cfc;
+}
+
+.pd-chat-message-user .pd-chat-bubble::before,
+.pd-chat-message-user .pd-chat-bubble::after,
+.pd-chat-message-assistant .pd-chat-bubble::before,
+.pd-chat-message-assistant .pd-chat-bubble::after {
+  content: "";
+  position: absolute;
+  top: 16px;
+  width: 0;
+  height: 0;
+}
+
+.pd-chat-message-user .pd-chat-bubble::before {
+  right: -13px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 13px solid #000;
+}
+
+.pd-chat-message-user .pd-chat-bubble::after {
+  right: -11px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 12px solid #cfc;
+}
+
+.pd-chat-message-assistant .pd-chat-bubble::before {
+  left: -13px;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-right: 13px solid #000;
+}
+
+.pd-chat-message-assistant .pd-chat-bubble::after {
+  left: -11px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-right: 12px solid #fff;
+}
+
+.pd-chat-bubble p,
+.pd-chat-bubble ul,
+.pd-chat-bubble ol {
+  margin: 0 0 0.75em;
+}
+
+.pd-chat-bubble p:last-child,
+.pd-chat-bubble ul:last-child,
+.pd-chat-bubble ol:last-child {
+  margin-bottom: 0;
+}
+
+.pd-chat-reasoning {
+  margin-top: 10px;
+  border-top: 1px dashed #999;
+  padding-top: 8px;
+}
+
+.pd-chat-reasoning summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.pd-chat-reasoning summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.pd-chat-reasoning[open] summary::before {
+  content: "▼";
+}
+
+.pd-chat-reasoning summary::-webkit-details-marker {
+  display: none;
+}
+
+.pd-chat-reasoning-body {
+  margin-top: 8px;
+  font-size: 0.95em;
+  color: #333;
+}
+
+.pd-chat-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-chat-cursor {
+  display: inline-block;
+  width: 1px;
+  height: 1.2em;
+  margin-left: 2px;
+  background: #000;
+  vertical-align: -0.2em;
+  animation: pd-chat-cursor-blink 0.8s steps(1) infinite;
+}
+
+.pd-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.pd-chat-input {
+  min-width: 0;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #000;
+  padding: 10px 12px;
+  background: #fff;
+  color: #000;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.pd-chat-input:disabled {
+  opacity: 0.65;
+}
+
+.pd-chat-send {
+  align-self: stretch;
+}
+
+.pd-chat-fullscreen-modal .modal-content {
+  height: 100vh;
+  height: 100dvh;
+  border: none;
+  border-radius: 0;
+  background: #f6f2e8;
+  overflow: hidden;
+}
+
+.pd-chat-fullscreen-modal .modal-dialog {
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  max-width: none;
+}
+
+.pd-chat-fullscreen-modal-body {
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pd-chat-fullscreen-shell {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(204, 255, 204, 0.8), transparent 26%),
+    linear-gradient(180deg, #f7f4ec 0%, #f2eddf 100%);
+  overflow: hidden;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.pd-chat-fullscreen-shell.is-sidebar-collapsed {
+  grid-template-columns: 92px minmax(0, 1fr);
+}
+
+.pd-chat-fullscreen-sidebar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  min-height: 100vh;
+  padding: 18px;
+  border-right: 1px solid #000;
+  background: linear-gradient(180deg, #f5f0e2 0%, #ebe3d1 100%);
+  overflow: hidden;
+  transition: padding 0.2s ease;
+}
+
+.pd-chat-fullscreen-sidebar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pd-chat-sidebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-chat-sidebar-collapse,
+.pd-chat-sidebar-close,
+.pd-chat-sidebar-toggle {
+  min-width: auto;
+  border: 1px solid #000;
+  padding: 6px 10px;
+  background: #fff;
+  font-weight: 700;
+}
+
+.pd-chat-sidebar-close,
+.pd-chat-sidebar-toggle {
+  display: none;
+}
+
+.pd-chat-sidebar-create {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.pd-chat-fullscreen-sidebar-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: 14px;
+  overflow-y: auto;
+}
+
+.pd-chat-sidebar-divider {
+  margin: 16px 0;
+  border: none;
+  border-top: 1px solid #000;
+  opacity: 1;
+}
+
+.pd-chat-fullscreen-sidebar-foot {
+  flex-shrink: 0;
+}
+
+.pd-chat-profile-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid #000;
+  padding: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #eeebde 100%);
+  text-align: left;
+}
+
+.pd-chat-profile-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #000;
+  border-radius: 50%;
+  background: #ccffcc;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.pd-chat-profile-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pd-chat-profile-name {
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.pd-chat-profile-caption {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-fullscreen-sidebar-head {
+  flex-direction: column;
+  align-items: center;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-session-caption,
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-fullscreen-sidebar-body,
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-sidebar-divider,
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-profile-meta {
+  display: none;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-session-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  letter-spacing: 1px;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-sidebar-create {
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-fullscreen-sidebar-foot {
+  margin-top: auto;
+}
+
+.pd-chat-fullscreen-sidebar.is-collapsed .pd-chat-profile-button {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.pd-chat-fullscreen-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.pd-chat-fullscreen-main-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #000;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.pd-chat-fullscreen-main-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pd-chat-fullscreen-main-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.pd-chat-fullscreen-main-caption {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.pd-chat-fullscreen-main-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.pd-chat-list-fullscreen {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 28px clamp(28px, 7vw, 112px) 20px;
+}
+
+.pd-chat-form-fullscreen {
+  padding: 16px clamp(28px, 7vw, 112px) 24px;
+  border-top: 1px solid #000;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.pd-chat-fullscreen-main-body .pd-ai-status {
+  margin: 0 clamp(28px, 7vw, 112px) 14px;
+}
+
+.pd-chat-fullscreen-main .pd-chat-message {
+  gap: 12px;
+}
+
+.pd-chat-fullscreen-main .pd-chat-role {
+  flex-basis: 64px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.pd-chat-fullscreen-main .pd-chat-bubble {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pd-chat-fullscreen-main .pd-chat-message-user .pd-chat-bubble {
+  background: #cfc;
+}
+
+.pd-chat-sidebar-backdrop {
+  display: none;
+}
+
+.pd-bazi-modal .modal-content {
+  border: 1px solid #000;
+  border-radius: 0;
+}
+
+.pd-bazi-card {
+  border: 1px solid #000;
+  background: linear-gradient(180deg, #ffffff 0%, #f7f3ea 100%);
+}
+
+.pd-bazi-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-bottom: 1px solid #000;
+  background: #eeebde;
+}
+
+.pd-bazi-card-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pd-bazi-card-subtitle {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.pd-bazi-card-status {
+  flex-shrink: 0;
+  border: 1px solid #000;
+  padding: 4px 8px;
+  background: #ffff99;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pd-bazi-pillars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pd-bazi-pillar {
+  min-width: 0;
+  padding: 14px 10px;
+  border-right: 1px solid #000;
+  text-align: center;
+}
+
+.pd-bazi-pillar:last-child {
+  border-right: none;
+}
+
+.pd-bazi-pillar-label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pd-bazi-pillar-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.pd-bazi-pillar-char {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.pd-bazi-pillar-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 34px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.pd-meishiki-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pd-meishiki-current {
+  border: 1px solid #000;
+  padding: 3px 8px;
+  font-weight: 700;
+  background: linear-gradient(to bottom, #ffffff, #EEEBDE);
+  font-size: 12px;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-meishiki-today {
+  min-width: 84px;
+  align-self: center;
+}
+
+.pd-meishiki-date-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pd-meishiki-date-label {
+  white-space: nowrap;
+  color: #000;
+}
+
+.pd-meishiki-date-select {
+  min-width: 132px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #000;
+  cursor: pointer;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+}
+
+.pd-meishiki-date-select:focus {
+  outline: none;
+}
+
+.pd-grid-panel,
+.pd-flow-board,
+.pd-flow-footnote,
+.pd-flow-cluster .pd-grid-head {
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.pd-grid-panel {
+}
+
+.pd-flow-cluster {
+  margin-bottom: 0;
+}
+
+.pd-grid-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  border-bottom: 1px solid #000;
+  background: #ccffcc;
+}
+
+.pd-flow-cluster .pd-grid-head {
+  border-bottom: none;
+  background: #ccffcc;
+}
+
+.pd-grid-head-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.pd-grid-title {
+  font-weight: 700;
+  line-height: 1.15;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-overview-scroll,
+.pd-flow-board-scroll {
+  overflow-x: auto;
+}
+
+.pd-overview-grid {
+  display: grid;
+  min-width: 612px;
+  background: #fff;
+}
+
+.pd-overview-relation-wrap {
+  position: relative;
+  min-width: 100%;
+}
+
+.pd-overview-cell {
+  min-width: 0;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 5px 4px;
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-overview-head,
+
+
+.pd-overview-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  padding: 5px;
+  background: #ccffcc;
+}
+
+.pd-overview-side-top {
+  align-items: center;
+}
+
+.pd-overview-star {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pd-overview-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+}
+
+.pd-overview-zoukan {
+  min-height: 72px;
+}
+
+.pd-overview-relation {
+  position: relative;
+  min-height: 42px;
+  padding: 4px 3px;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  overflow: visible;
+}
+
+.pd-overview-relation-side {
+  font-size: 12px;
+  letter-spacing: 0;
+  border-left: none;
+  border-right: 1px solid #000;
+  border-bottom: 1px solid #000;
+}
+
+.pd-overview-relation-side-merged {
+  align-self: stretch;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pd-relation-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  writing-mode: inherit;
+  text-orientation: inherit;
+  cursor: pointer;
+}
+
+.pd-relation-toggle-arrow {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.pd-overview-relation-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-right: none;
+  background: #ccffcc;
+}
+
+.pd-relation-toggle-collapsed {
+  width: auto;
+  min-height: 0;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  letter-spacing: 0;
+}
+
+.pd-overview-relation-end {
+  border-bottom: 1px solid #000;
+}
+
+.pd-relation-marker-stack {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 32px;
+}
+
+.pd-relation-marker {
+  position: relative;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border: 1px solid #111;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 3px #fff, 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.pd-relation-empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  color: #b8b8b8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pd-overview-relation-svg {
+  position: absolute;
+  inset: 0 auto auto 0;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pd-overview-relation-line {
+  stroke: #111;
+  stroke-width: 1.2;
+  stroke-opacity: 0.78;
+}
+
+.pd-overview-relation-label-bg {
+  fill: #fff;
+  stroke: #111;
+  stroke-width: 0.8;
+}
+
+.pd-overview-relation-label {
+  fill: #111;
+  dominant-baseline: central;
+  font-size: 11px;
+  font-weight: 800;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.pd-top-star-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 52px;
+  margin: 0 auto;
+  letter-spacing: 0;
+  line-height: 1.05;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-top-star-text span {
+  display: block;
+  line-height: 1.05;
+}
+
+.pd-board-zoukan {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  min-height: 58px;
+}
+
+.pd-board-zoukan-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  line-height: 1;
+}
+
+.pd-flow-board-first {
+  border-top: none;
+}
+
+.pd-flow-cluster + .pd-flow-board,
+.pd-flow-board + .pd-flow-board {
+  margin-top: 0;
+  border-top: none;
+}
+
+.pd-flow-board {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
+.pd-flow-board-side {
+  display: grid;
+  grid-template-rows: 36px 1fr;
+}
+
+.pd-flow-board-side-top,
+.pd-flow-board-side-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #000;
+  background: #ccffcc;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-flow-board-side-top {
+  border-bottom: 1px solid #000;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.pd-flow-board-side-main {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  background: #ccffcc;
+}
+
+.pd-flow-board-columns {
+  display: grid;
+  min-width: 100%;
+}
+
+.pd-flow-column {
+  appearance: none;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-right: 1px solid #000;
+  background: #fff;
+  color: #000;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pd-flow-column:last-child {
+  border-right: none;
+}
+
+.pd-flow-column-placeholder {
+  cursor: default;
+  pointer-events: none;
+  background: #fff;
+}
+
+.pd-flow-column-placeholder:hover {
+  background: #fff;
+  background-image: none;
+}
+
+.pd-flow-column-stack-placeholder {
+  min-height: 100%;
+}
+
+.pd-flow-column:hover {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.pd-flow-column.is-active {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+  box-shadow: inset 0 0 0 1px #000;
+}
+
+.pd-flow-column:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: -2px;
+}
+
+.pd-flow-column-top {
+  min-height: 36px;
+  padding: 2px 2px;
+  border-bottom: 1px solid #000;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+}
+
+.pd-flow-column-top-primary {
+  font-size: 15px;
+  line-height: 1.15;
+}
+
+.pd-flow-column-top-secondary {
+  margin-top: 1px;
+  font-size: 12px;
+  color: #000;
+  line-height: 1.1;
+}
+
+.pd-flow-column-bottom {
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+}
+
+.pd-flow-column-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 100%;
+  width: 100%;
+}
+
+.pd-flow-column-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.pd-element-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.pd-element-slot.is-insight-enabled .pd-element-trigger {
+  cursor: pointer;
+}
+
+.pd-element-slot.is-insight-enabled .pd-element-trigger:hover {
+  background: linear-gradient(to bottom, #ffffff 0%, #eeebde 100%);
+}
+
+.pd-element-slot.is-insight-enabled .pd-element-trigger:focus-visible {
+  outline: 1px solid #000;
+  outline-offset: 2px;
+}
+
+.pd-element-empty {
+  display: inline-block;
+  min-width: 1em;
+  min-height: 1.25em;
+}
+
+.pd-element-slot .text-element {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 0;
+  margin: 0;
+  font-size: 25px;
+  line-height: 0.95;
+  font-family: "Kaisei Opti", serif;
+  vertical-align: middle;
+}
+
+.pd-overview-element-ruby .text-element {
+  font-size: 25px;
+}
+
+.pd-element-slot .text-element span {
+  display: inline-block;
+  min-width: 1em;
+  line-height: 1;
+}
+
+.pd-element-slot .text-element rt {
+  margin: 0;
+  padding: 0;
+}
+
+.pd-element-slot .text-element rt.vt {
+  margin-left: 0;
+  font-size: 12px;
+  line-height: 1;
+  color: #000;
+}
+
+.pd-overview-element-ruby .text-element rt.vt {
+  font-size: 12px;
+}
+
+.pd-zoukan-element-ruby .text-element {
+  font-size: 19px;
+}
+
+.pd-zoukan-element-ruby .text-element rt.vt {
+  margin-left: 0;
+  font-size: 10px;
+}
+
+.pd-element-insight-modal .modal-content {
+  border-radius: 0;
+  border: 1px solid #000;
+}
+
+.pd-element-insight-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pd-element-insight-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.pd-element-insight-symbol {
+  min-width: 56px;
+  font-size: 40px;
+  line-height: 1;
+  font-weight: 700;
+  font-family: "Kaisei Opti", serif;
+}
+
+.pd-element-insight-meta {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.pd-element-insight-body {
+  border-top: 1px solid #000;
+  padding-top: 12px;
+  line-height: 1.7;
+}
+
+.pd-flow-element-ruby .text-element {
+  font-size: 25px;
+  gap: 0;
+  padding: 5px 0;
+  font-family: "Kaisei Opti", serif;
+}
+
+.pd-flow-element-ruby .text-element rt.vt {
+  font-size: 12px;
+}
+
+.pd-flow-element-ruby .text-element span {
+  min-width: 1em;
+  line-height: 1;
+}
+
+.pd-flow-column-tsuhen {
+  min-height: 12px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pd-flow-column-branch-note {
+  margin-top: 1px;
+  min-height: 12px;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.pd-flow-board-first .pd-flow-column-top {
+  min-height: 30px;
+  padding: 2px 3px;
+}
+
+
+
+
+.pd-flow-footnote {
+  margin-top: 10px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Serif JP", "A1 Mincho", "YuMincho", "Hiragino Mincho ProN", "Yu Mincho",
+    "MS PMincho", serif;
+  color: #000;
+  background: linear-gradient(to bottom, #ffffff, #EEEBDE);
+}
+
+.pd-export-stage {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 430px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.pd-export-sheet {
+  width: 430px;
+  padding: 16px;
+  background: #fff;
+  color: #000;
+}
+
+.pd-export-header {
+  border: 1px solid #000;
+  padding: 12px;
+  background: #fff;
+}
+
+.pd-export-title {
+  display: flex;
+  align-items: center;
+  font-size: 20px;
+  line-height: 1;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Sans JP", "Yu Gothic", sans-serif;
+}
+
+.pd-export-subtitle {
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.pd-export-meta {
+  margin-top: 12px;
+  border: 1px solid #000;
+  background: #fff;
+}
+
+.pd-export-meta-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #000;
+}
+
+.pd-export-meta-row:last-child {
+  border-bottom: none;
+}
+
+.pd-export-meta-label {
+  width: 72px;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.pd-export-meta-value {
+  flex: 1;
+  word-break: break-word;
+}
+
+.pd-export-panel {
+  margin-top: 12px;
+}
+
+.pd-export-shell {
+  padding: 0;
+}
+
+.pd-export-list {
+  padding-top: 0;
+}
+
+.pd-export-sheet .pd-panel-head {
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.pd-export-sheet .pd-panel-title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  min-height: 28px;
+  font-size: 19px;
+  line-height: 1;
+  font-weight: 700;
+  font-family: "BIZ UDGothic", "Noto Sans JP", "Yu Gothic", sans-serif;
+}
+
+.pd-export-sheet .pd-panel-caption {
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.pd-export-meishiki {
+  border: 1px solid #000;
+  border-bottom: none;
+  background: #fff;
+}
+
+.pd-export-meishiki-row {
+  display: grid;
+  grid-template-columns: 72px repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid #000;
+}
+
+.pd-export-meishiki-label,
+.pd-export-meishiki-col,
+.pd-export-meishiki-wide {
+  min-width: 0;
+  padding: 8px 6px;
+  border-right: 1px solid #000;
+  text-align: center;
+}
+
+.pd-export-meishiki-label {
+  background: #ccffcc;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  letter-spacing: 1px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0;
+}
+
+.pd-export-meishiki-col:last-child,
+.pd-export-meishiki-wide:last-child {
+  border-right: none;
+}
+
+.pd-export-meishiki-head .pd-export-meishiki-col,
+.pd-export-meishiki-head .pd-export-meishiki-label {
+  background: #eeebde;
+  font-weight: 700;
+}
+
+.pd-export-meishiki-wide {
+  grid-column: 2 / 6;
+  border-right: none;
+}
+
+.pd-export-pillar-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.pd-export-pillar-main {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.pd-export-pillar-sub {
+  min-height: 18px;
+  font-size: 12px;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.pd-export-zoukan-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pd-export-zoukan-line {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 2px;
+  line-height: 1.25;
+}
+
+.pd-export-zoukan-main {
+  font-weight: 700;
+}
+
+.pd-export-zoukan-sub {
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.pd-export-ai-card {
+  border: 1px solid #000;
+  background: #fff;
+  padding: 12px;
+}
+
+.pd-export-ai-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 8px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #000;
+  background: #ccffcc;
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  vertical-align: top;
+  box-sizing: border-box;
+  font-family: "BIZ UDGothic", "Noto Sans JP", "Yu Gothic", sans-serif;
+}
+
+.pd-export-ai-card-reason .pd-export-ai-title {
+  background: #eeebde;
+}
+
+.pd-export-ai-body {
+  padding-top: 2px;
+  line-height: 1.6;
+}
+
+.pd-export-ai-body p,
+.pd-export-ai-body ul,
+.pd-export-ai-body ol {
+  margin: 0 0 0.75em;
+}
+
+.pd-export-ai-body p:last-child,
+.pd-export-ai-body ul:last-child,
+.pd-export-ai-body ol:last-child {
+  margin-bottom: 0;
+}
+
+@keyframes pd-spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pd-chat-cursor-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .pd-title-row,
+  .pd-panel-head {
+    flex-direction: column;
+  }
+
+  .pd-counter {
+    align-self: flex-start;
+  }
+
+  .pd-control-wrap {
+    flex-wrap: wrap;
+    padding: 6px 8px;
+  }
+
+  .pd-inline-note {
+    white-space: normal;
+  }
+
+  .pd-action-button {
+    width: 100%;
+  }
+
+  .pd-chat-message,
+  .pd-chat-message-user {
+    flex-direction: column;
+  }
+
+  .pd-chat-role {
+    flex: none;
+    width: auto;
+  }
+
+  .pd-chat-form {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-chat-fullscreen-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-chat-fullscreen-shell.is-sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-chat-fullscreen-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 12px 0 24px rgba(0, 0, 0, 0.14);
+  }
+
+  .pd-chat-fullscreen-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .pd-chat-sidebar-close,
+  .pd-chat-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px;
+  }
+
+  .pd-chat-sidebar-collapse {
+    display: none;
+  }
+
+  .pd-chat-sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: none;
+    border: none;
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .pd-chat-sidebar-backdrop.is-open {
+    display: block;
+  }
+
+  .pd-chat-fullscreen-main-head {
+    padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+    gap: 8px;
+  }
+
+  .pd-chat-fullscreen-main-info {
+    align-items: center;
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .pd-chat-fullscreen-main-title {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .pd-chat-fullscreen-main-caption {
+    font-size: 11px;
+  }
+
+  .pd-chat-fullscreen-main-body {
+    padding: 0 6px;
+  }
+
+  .pd-chat-form-fullscreen {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .pd-chat-list-fullscreen {
+    padding: 12px 12px 8px;
+  }
+
+  .pd-chat-fullscreen-main-body .pd-ai-status {
+    margin: 0 12px 10px;
+  }
+
+  .pd-chat-fullscreen-main .pd-chat-message {
+    gap: 8px;
+  }
+
+  .pd-chat-fullscreen-main .pd-chat-role {
+    flex-basis: 44px;
+    width: 44px;
+    height: 44px;
+    font-size: 12px;
+  }
+
+  .pd-chat-form-fullscreen .pd-chat-input {
+    min-height: 72px;
+    max-height: 18dvh;
+    resize: none;
+    overflow-y: auto;
+  }
+
+  .pd-bazi-pillars {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pd-bazi-pillar:nth-child(2n) {
+    border-right: none;
+  }
+
+  .pd-bazi-pillar:nth-child(n + 3) {
+    border-top: 1px solid #000;
+  }
+
+  .pd-export-stage,
+  .pd-export-sheet {
+    width: 390px;
+  }
+
+  .pd-export-meishiki-row {
+    grid-template-columns: 64px repeat(4, minmax(0, 1fr));
+  }
+
+  .pd-export-pillar-main {
+    font-size: 24px;
+  }
+
+  .pd-export-pillar-sub,
+  .pd-export-zoukan-sub {
+    font-size: 11px;
+  }
+
+  .pd-export-sheet .pd-panel-title {
+    font-size: 17px;
+    min-height: 26px;
+  }
+
+  .pd-export-ai-title {
+    font-size: 16px;
+    min-height: 38px;
+  }
+
+  .pd-overview-grid {
+    min-width: 540px;
+  }
+
+  .pd-grid-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pd-grid-title {
+  }
+
+  .pd-meishiki-today {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  .pd-flow-board {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .pd-flow-board-side {
+    grid-template-rows: 30px 1fr;
+  }
+
+  .pd-flow-column-top {
+    min-height: 30px;
+  }
+
+  .pd-flow-column-bottom {
+    min-height: 92px;
+  }
+
+  .pd-element-slot .text-element rt.vt {
+    font-size: 9px;
+  }
+
+  .pd-zoukan-element-ruby .text-element {
+    font-size: 15px;
+  }
+
+}

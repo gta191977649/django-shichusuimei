@@ -1,0 +1,153 @@
+# app/services/deepseek.py
+# Keep ALL DeepSeek/OpenAI specifics in this file.
+
+import json
+import re
+from typing import Any, List
+from django.conf import settings
+from openai import APIConnectionError, AuthenticationError, OpenAI, RateLimitError
+
+DEEPSEEK_BASE_URL = getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = getattr(settings, "DEEPSEEK_MODEL", "deepseek-v4-pro")
+DEEPSEEK_THINKING = getattr(settings, "DEEPSEEK_THINKING", {"type": "disabled"})
+DEEPSEEK_REASONING_EFFORT = getattr(settings, "DEEPSEEK_REASONING_EFFORT", "high")
+
+
+class DeepseekError(RuntimeError):
+    pass
+
+
+def _client() -> OpenAI:
+    key = getattr(settings, "DEEPSEEK_API_KEY", None)
+    if not key:
+        raise DeepseekError(
+            "DEEPSEEK_API_KEY is not configured. Set it in backend/.env before using /api/gpt."
+        )
+    return OpenAI(api_key=key, base_url=DEEPSEEK_BASE_URL)
+
+
+# ------------------- JSON parsing helpers -------------------
+
+def _sanitize_json(raw: str) -> str:
+    """Try to fix common JSON format errors from the model."""
+    s = raw.replace("\ufeff", "").strip()
+
+    # remove ```json fences
+    s = re.sub(r"^```[a-zA-Z]*\s*|```$", "", s, flags=re.MULTILINE)
+
+    # extract the outermost JSON container, preferring whichever starts first
+    array_start, array_end = s.find("["), s.rfind("]")
+    object_start, object_end = s.find("{"), s.rfind("}")
+    starts = [(array_start, array_end, "["), (object_start, object_end, "{")]
+    starts = [item for item in starts if item[0] != -1 and item[1] != -1 and item[1] > item[0]]
+    if starts:
+        start, end, container = min(starts, key=lambda item: item[0])
+        if container == "[":
+            s = s[start:end + 1]
+        else:
+            s = s[start:end + 1]
+
+    # fix keys like `" "content"` → `"content"`
+    s = s.replace('" "content"', '"content"').replace('" "entity"', '"entity"')
+    s = re.sub(r'"\s+"(?=[A-Za-z0-9_\u4e00-\u9fff]+")', '"', s)
+
+    # remove trailing commas before } or ]
+    s = re.sub(r",(\s*[}\]])", r"\1", s)
+
+    return s
+
+
+def _safe_parse_json(raw: str) -> Any:
+    """Parse model output; tolerate minor JSON mistakes."""
+    try:
+        return json.loads(raw)
+    except Exception:
+        fixed = _sanitize_json(raw)
+        try:
+            return json.loads(fixed)
+        except Exception as e:
+            raise DeepseekError(
+                f"Model did not return valid JSON: {e}\n"
+                f"--- RAW ---\n{raw[:500]}\n\n--- SANITIZED ---\n{fixed[:500]}"
+            )
+
+
+# ------------------- Main API call -------------------
+
+def analyze_bazi(messages: List[dict], stream_debug: bool = False):
+    """
+    Call DeepSeek and return parsed JSON list.
+    If stream_debug=True, prints reasoning and content in real-time and
+    returns a dict:
+        {
+            "data": parsed_json,
+            "reply": full_reply,
+            "reasoning": full_reasoning
+        }
+    """
+    client = _client()
+    request_options = {
+        "model": DEEPSEEK_MODEL,
+        "messages": messages,
+        "reasoning_effort": DEEPSEEK_REASONING_EFFORT,
+        "extra_body": {"thinking": DEEPSEEK_THINKING},
+    }
+
+    # --- Non-stream mode (simple) ---
+    if not stream_debug:
+        resp = client.chat.completions.create(**request_options, stream=False)
+        raw = resp.choices[0].message.content
+        parsed = _safe_parse_json(raw)
+        return {"data": parsed, "reply": raw, "reasoning": ""}
+
+    # --- Stream mode with debug ---
+    print("📡 Streaming response...\n")
+    full_reply = ""
+    full_reasoning = ""
+
+    try:
+        stream = client.chat.completions.create(**request_options, stream=True)
+
+        for chunk in stream:
+            if hasattr(chunk, "choices") and chunk.choices:
+                delta = chunk.choices[0].delta
+
+                # DeepSeek reasoning tokens
+                rc = getattr(delta, "reasoning_content", None)
+                if rc:
+                    print(rc, end="", flush=True)
+                    full_reasoning += rc
+
+                # Normal content tokens
+                cp = getattr(delta, "content", None)
+                if cp:
+                    print(cp, end="", flush=True)
+                    full_reply += cp
+
+        print("\n\n✅ Streaming complete.")
+        print("\n" + "=" * 50)
+        print("完整推理过程:")
+        print(full_reasoning)
+        print("\n" + "=" * 50)
+        print("完整回答内容:")
+        print(full_reply)
+
+        parsed = _safe_parse_json(full_reply)
+        return {
+            "payload": parsed,
+            "reason": full_reasoning,
+        }
+
+    except AuthenticationError:
+        raise DeepseekError(
+            "DeepSeek authentication failed. Please set a valid DEEPSEEK_API_KEY in backend/.env."
+        )
+    except RateLimitError as e:
+        raise DeepseekError(f"DeepSeek rate limit exceeded: {e}")
+    except APIConnectionError as e:
+        raise DeepseekError(f"DeepSeek connection failed: {e}")
+    except KeyboardInterrupt:
+        print("\n\n⛔️ Streaming interrupted by user.")
+        raise
+    except Exception as e:
+        raise DeepseekError(f"Streaming failed: {e}")

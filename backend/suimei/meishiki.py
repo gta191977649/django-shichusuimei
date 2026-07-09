@@ -601,10 +601,12 @@ class Meishi:
                     "支合": 0.045,
                     "暗合": 0.035,
                     "三合局": 0.060,
+                    "三会局": 0.060,
                     "半合": 0.040,
                 }.get(relation_type, 0.045 if item.get("realm") == "shi" else 0.035)
                 target_gain_ratio = {
                     "三合局": 0.75,
+                    "三会局": 0.75,
                     "半合": 0.45,
                 }.get(relation_type, 0.5)
                 rate = bind_rate * strength
@@ -663,6 +665,7 @@ class Meishi:
                 "干合": 0.22,
                 "支合": 0.18,
                 "三合局": 0.24,
+                "三会局": 0.24,
                 "半合": 0.14,
             }.get(source_type, 0.18)
             base_rate = transform_base_rate * (float(item.get("score") or 0) / 100.0)

@@ -1,0 +1,1501 @@
+import datetime
+import cnlunar
+import math
+import numpy as np
+from suimei.model.Gouka import *
+from suimei.model.daiun import *
+def trans(M):
+    return [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]
+class Meishi:
+    SHIN_TYPE_RATIO_THRESHOLD = 0.05
+    # 天干
+    kan = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸', ]
+    # 地支
+    shi = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥', ]
+    # 天干陰陽対応 (陽：甲、丙、戊、庚、壬 ｜ 陰：乙、丁、己、辛、癸） 陽：1、陰：0
+    kan_onmyo = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+    # 地支陰陽対応 (陽：子、寅、辰、午、申、戌 ｜ 陰：丑、卯、巳、未、酉、亥) 陽：1、陰：0
+    shi_onmyo = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]
+    # 十神
+    tsuhen = ['比肩', '劫財', '食神', '傷官', '偏財', '正財', '七殺', '正官', '偏印', '正印', ]
+    # 五行 ㊎㊍㊌㊋㊏
+    gogyo = ['木', '火', '土', '金', '水' ]
+    # 五行生剋関係
+    gogyo_seikei = {
+        "木": {
+            "自星": "木",  # 自身
+            "印星": "水",  # 生我（印星）
+            "泄星": "火",  # 我生（泄星）
+            "官星": "金",  # 克我（官星）
+            "財星": "土",  # 我剋（财星）
+        },
+        "火": {
+            "自星": "火",
+            "印星": "木",
+            "泄星": "土",  # 修正：火生土
+            "官星": "水",
+            "財星": "金",  # 修正：火剋金
+        },
+        "土": {
+            "自星": "土",
+            "印星": "火",
+            "泄星": "金",  # 修正：土生金
+            "官星": "木",
+            "財星": "水",  # 修正：土剋水
+        },
+        "金": {
+            "自星": "金",
+            "印星": "土",
+            "泄星": "水",
+            "官星": "火",
+            "財星": "木",
+        },
+        "水": {
+            "自星": "水",
+            "印星": "金",
+            "泄星": "木",
+            "官星": "土",
+            "財星": "火",
+        },
+    }
+
+    # 天干五行対応
+    gogyo_kan = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, ]
+    # 地支五行対応
+    gogyo_shi = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4, ]
+    # 季節
+    season = ['春', '夏', '土', '秋', '冬', ]
+    # 天干季節対応
+    season_kan = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, ]
+    # 地支季節対応
+    season_shi = [4, 4, 0, 0, 0, 1, 1, 1, 3, 3, 3, 4, ]
+    # 通变星表
+    kan_tsuhen = [
+        # 甲,乙 ,丙,丁,戊,己,庚,辛,壬,癸
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ],  # 甲
+        [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, ],  # 乙
+        [2, 3, 4, 5, 6, 7, 8, 9, 0, 1, ],  # 丙
+        [3, 2, 5, 4, 7, 6, 9, 8, 1, 0, ],  # 丁
+        [4, 5, 6, 7, 8, 9, 0, 1, 2, 3, ],  # 戊
+        [5, 4, 7, 6, 9, 8, 1, 0, 3, 2, ],  # 己
+        [6, 7, 8, 9, 0, 1, 2, 3, 4, 5, ],  # 庚
+        [7, 6, 9, 8, 1, 0, 3, 2, 5, 4, ],  # 辛
+        [8, 9, 0, 1, 2, 3, 4, 5, 6, 7, ],  # 壬
+        [9, 8, 1, 0, 3, 2, 5, 4, 7, 6, ],  # 癸
+    ]
+    # 蔵干 (阿部泰山式)
+    zoukan = {
+        # 初気 中気 本気
+        # (春)
+        "寅": ["戊", "丙", "甲"],
+        "卯": ["", "", "乙"],
+        "辰": ["癸", "乙", "戊"],
+        # (夏)
+        "巳": ["戊", "庚", "丙"],
+        "午": ["", "己", "丁"],
+        "未": ["丁", "乙", "己"],
+        # (秋)
+        "申": ["戊", "壬", "庚"],
+        "酉": ["", "", "辛"],
+        "戌": ["辛", "丁", "戊"],
+        # (冬)
+        "亥": ["甲", "", "壬"],
+        "子": ["", "", "癸"],
+        "丑": ["辛", "癸", "己"],
+    }
+    # 六十甲子空亡表
+    KuBouTable = {
+      "戌亥": ["甲子","乙丑","丙寅","丁卯","戊辰","己巳","庚午","辛未","壬申","癸酉"],
+      "申酉": ["甲戌","乙亥","丙子","丁丑","戊寅","己卯","庚辰","辛巳","壬午","癸未"],
+      "午末": ["甲申","乙酉","丙戌","丁亥","戊子","己丑","庚寅","辛卯","壬辰","癸巳"],
+      "辰巳": ["甲午","乙未","丙申","丁酉","戊戌","己亥","庚子","辛丑","壬寅","癸卯"],
+      "寅卯": ["甲辰","乙巳","丙午","丁未","戊申","己酉","庚戌","辛亥","壬子","癸丑"],
+      "子丑": ["甲寅","乙卯","丙辰","丁巳","戊午","己未","庚申","辛酉","壬戌","癸亥"]
+    }
+    # 月令点表 (決定版 四柱推命学の完全独習 - 三木照山 p.96)
+    TsukireiPointMatrix = [
+        # '子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'
+        [1, 1, 3, 3, 2, 1, 1, 1, 0, 0, 0, 1],  # 甲
+        [1, 1, 3, 3, 2, 1, 1, 1, 0, 0, 0, 1],  # 乙
+        [0, 0, 1, 1, 1, 3, 3, 2, 0, 0, 1, 0],  # 丙
+        [0, 0, 1, 1, 1, 3, 3, 2, 0, 0, 1, 0],  # 丁
+        [0, 2, 0, 0, 2, 3, 3, 2, 0, 0, 2, 0],  # 戊
+        [0, 2, 0, 0, 2, 3, 3, 2, 0, 0, 2, 0],  # 己
+        [1, 1, 0, 0, 0, 0, 0, 1, 3, 3, 2, 1],  # 庚
+        [1, 1, 0, 0, 0, 0, 0, 1, 3, 3, 2, 1],  # 辛
+        [3, 2, 1, 1, 1, 0, 0, 0, 1, 1, 1, 3],  # 壬
+        [3, 2, 1, 1, 1, 0, 0, 0, 1, 1, 1, 3],  # 癸
+
+    ]
+    # 五行月令係数表 (https://www.zhycw.com/art/n21c5.aspx)
+    TsukireiKeisuHeader = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子","丑"]
+    TsukireiKeisuRow = ["木", "火", "土", "金", "水"]
+    TsukireiKeisuMatrix = [
+        [1.571, 2.000, 1.166, 0.862, 0.912, 0.924, 0.795, 0.500, 0.674, 1.590, 1.414, 0.898],  # 木
+        [1.548, 1.414, 1.074, 1.571, 1.700, 1.341, 0.674, 0.707, 1.012, 0.774, 0.500, 0.821],  # 火
+        [0.924, 0.500, 1.421, 1.548, 1.590, 1.674, 1.012, 1.000, 1.641, 0.645, 0.707, 1.512],  # 土
+        [0.716, 0.707, 1.161, 0.924, 0.774, 1.069, 1.641, 2.000, 1.498, 0.912, 1.000, 1.348],  # 金
+        [0.862, 1.000, 0.800, 0.716, 0.645, 0.612, 1.498, 1.414, 0.795, 1.7030, 2.000, 1.041]  # 水
+    ]
+    ZoukanPointTable = {
+        "子": {
+            "癸": 100,
+        },
+        "丑": {
+            "己": 60,
+            "癸": 30,
+            "辛": 10,
+        },
+        "寅": {
+            "甲": 60,
+            "丙": 30,
+            "戊": 10,
+        },
+        "卯": {
+            "乙": 100,
+        },
+        "辰": {
+            "戊": 60,
+            "乙": 30,
+            "癸": 10,
+        },
+        "巳": {
+            "丙": 60,
+            "戊": 30,
+            "庚": 10,
+        },
+        "午": {
+            "丁": 70,
+            "己": 30,
+        },
+        "未": {
+            "己": 60,
+            "丁": 30,
+            "乙": 10,
+        },
+        "申": {
+            "庚": 60,
+            "壬": 30,
+            "戊": 10,
+        },
+        "酉": {
+            "辛": 100,
+        },
+        "戌": {
+            "戊": 60,
+            "辛": 30,
+            "丁": 10,
+        },
+        "亥": {
+            "壬": 70,
+            "甲": 30,
+        },
+    }
+    # 十二運エネルギー表
+    JuniunTable = ["長生", "沐浴", "冠帯", "建禄", "帝旺", "衰", "病", "死", "墓", "絶", "胎", "養"]
+    # 十二運星点表 (参造三木照山 p.100)
+    JuniunPointTable = {
+        "長生":1,
+        "冠帯":1,
+        "帝旺":2,
+        "建禄":2,
+        "沐浴":0,
+        "墓":0,
+        "胎":0,
+        "養":0,
+        "衰":0,
+        "死":0,
+        "病":0,
+        "絶":0,
+    }
+    # 十二運星表
+    JuniunboshiMatrix = [
+        # 长生 沐浴 冠带 建禄 帝旺 衰 病 死 墓 绝 胎 养
+        ["亥", "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌"],  # 甲
+        ["午", "巳", "辰", "卯", "寅", "丑", "子", "亥", "戌", "酉", "申", "未"],  # 乙
+        ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"],  # 丙
+        ["酉", "申", "未", "午", "巳", "辰", "卯", "寅", "丑", "子", "亥", "戌"],  # 丁
+        ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"],  # 戊
+        ["酉", "申", "未", "午", "巳", "辰", "卯", "寅", "丑", "子", "亥", "戌"],  # 己
+        ["巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑", "寅", "卯", "辰"],  # 庚
+        ["子", "亥", "戌", "酉", "申", "未", "午", "巳", "辰", "卯", "寅", "丑"],  # 辛
+        ["申", "酉", "戌", "亥", "子", "丑", "寅", "卯", "辰", "巳", "午", "未"],  # 壬
+        ["卯", "寅", "丑", "子", "亥", "戌", "酉", "申", "未", "午", "巳", "辰"]  # 癸
+    ]
+
+    # 干合 (天干)
+    kangou = {
+        "土": ["甲", "己"],
+        "金": ["乙", "庚"],
+        "水": ["丙", "辛"],
+        "木": ["丁", "壬"],
+        "火": ["戊", "癸"],
+    }
+    # 支合 (地支)
+    shigou = {
+        "土": ["子", "丑"],
+        "金": ["辰", "酉"],
+        "水": ["申", "巳"],
+        "木": ["寅", "亥"],
+        "火": ["午", "未"],
+    }
+    # 七冲 (地支)
+    chichu = [
+        ["午", "子"],
+        ["未", "丑"],
+        ["申", "寅"],
+        ["酉", "卯"],
+        ["戌", "辰"],
+        ["亥", "巳"],
+    ]
+
+    # 旺相休囚死表 （https://www.sohu.com/a/288872833_120083344）
+    # 木，火，土，金，水
+    gogyoEnergySeasonTable = {
+        "寅": ["旺", "相", "死", "囚", "休"],
+        "卯": ["旺", "相", "死", "囚", "休"],
+        "辰": ["相", "休", "旺", "相", "死"],
+        "巳": ["休", "旺", "相", "死", "囚"],
+        "午": ["休", "旺", "相", "死", "囚"],
+        "未": ["囚", "相", "旺", "休", "死"],
+        "申": ["死", "囚", "休", "旺", "相"],
+        "酉": ["死", "囚", "休", "旺", "相"],
+        "戌": ["囚", "休", "旺", "相", "死"],
+        "亥": ["相", "死", "囚", "休", "旺"],
+        "子": ["相", "死", "囚", "休", "旺"],
+        "丑": ["囚", "休", "旺", "相", "相"]
+    }
+
+    def getGogyoEnergyFromMonth(self,month,element):
+        """
+          Get the energy state of a specific element in a given month
+
+          Args:
+              month (str): Chinese zodiac month (e.g., "寅", "卯", etc.)
+              element (str): One of the five elements ("木", "火", "土", "金", "水")
+
+          Returns:
+              str: Energy state ("旺", "相", "休", "囚", "死", "余气")
+          """
+        # Element index mapping
+        elementIndex = {"木": 0, "火": 1, "土": 2, "金": 3, "水": 4}
+
+        # Input validation
+        if month not in Meishi.gogyoEnergySeasonTable:
+            raise ValueError(f"Invalid month: {month}")
+        if element not in elementIndex:
+            raise ValueError(f"Invalid element: {element}")
+
+        return Meishi.gogyoEnergySeasonTable[month][elementIndex[element]]
+
+    def check_six_ka(self,tsuhen):
+        #'比肩', '劫財'
+        six_ka = {
+            "官": ['七殺', '正官'],
+            "印": ['偏印', '正印'],
+            "財": ['偏財', '正財'],
+            "食": ['食神'],
+            "傷": ['傷官'],
+            "食": ['食神'],
+            "比肩": ['比肩'],
+            "劫財": ['劫財'],
+        }
+
+        for key, values in six_ka.items():
+            if tsuhen in values:
+                return key
+        return None
+
+    def get_kan_element_type(self,kan):
+        kan_idx = Meishi.kan.index(kan)
+        gogyo_idx = Meishi.gogyo_kan[kan_idx]
+        return Meishi.gogyo[gogyo_idx]
+
+    def get_shi_element_type(self,shi):
+        shi_idx = Meishi.shi.index(shi)
+        gogyo_idx = Meishi.gogyo_shi[shi_idx]
+        return Meishi.gogyo[gogyo_idx]
+    def check_chichu(self, shi_1, shi_2):
+        # Create a set of the input 地支
+        shi_pair = {shi_1, shi_2}
+
+        # Check against each 七冲 pair in the list
+        for pair in self.chichu:
+            if set(pair) == shi_pair:
+                return True
+
+        # If no match is found, return False
+        return False
+    def check_kangou(self, kan_1, kan_2):
+        shi_pair = {kan_1, kan_2}
+        for element, pair in self.kangou.items():
+            if set(pair) == shi_pair:
+                return element
+        return None
+
+    def check_shigou(self, shi_1, shi_2):
+        shi_pair = {shi_1, shi_2}
+        for element, pair in self.shigou.items():
+            if set(pair) == shi_pair:
+                return element
+        return None
+    # 蔵干に取って
+    def getZoukan(self,element):
+        return Meishi.zoukan[element]
+
+    def getTwelveFestivalsForYear(self, year: int):
+        """
+        Return a dict { term_name: (month, day) } for the 12 節 of the given calendar year.
+        """
+        # create a Lunar object pegged anywhere in that year:
+        sample_date = datetime.datetime(year, self.birthdate.month, self.birthdate.day)
+        lunar = cnlunar.Lunar(sample_date, godType='8char')
+
+        setsu_terms = [
+            "立春", "惊蛰", "清明", "立夏", "芒种", "小暑",
+            "立秋", "白露", "寒露", "立冬", "大雪", "小寒"
+        ]
+        return {
+            term: date
+            for term, date in lunar.thisYearSolarTermsDic.items()
+            if term in setsu_terms
+        }
+
+
+    def getTwelveFestivalsForBirthYear(self):
+        # 立春、惊蛰、清明、立夏、芒种、小暑、立秋、白露、寒露、立冬、大雪、小寒 二十四節気の「節」です
+        setsu_terms = ["立春", "惊蛰", "清明", "立夏", "芒种", "小暑", "立秋", "白露", "寒露", "立冬", "大雪", "小寒"]
+        dates = {term: date for term, date in self.date.thisYearSolarTermsDic.items() if term in setsu_terms}
+        return dates
+    # イベン計算(流年)
+    def getEvent(self,kan,shi,type="relationship"):
+        event_list = []
+        relastioship_element = self.chishi[2]
+        if type == "relationship":
+            # 男命遇财星，女命遇官杀
+            kan_tsuhen = kan["tsuhen"]
+            shi_tsuhen = shi["tsuhen"]
+            if self.gender == 1:
+                # 财星情况
+                if kan_tsuhen == "偏財" or kan_tsuhen == "正財":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{kan_tsuhen}」" ,
+                        "description": ""
+                    })
+                if shi_tsuhen == "偏財" or shi_tsuhen == "正財":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{shi_tsuhen}」",
+                        "description": ""
+                    })
+                # 夫妻宫引动情况 (自刑(同)，合，冲，刑)
+                # 干合
+                if self.check_kangou(self.higen, kan["element"]):
+                    event_list.append({
+                        "name": "恋愛機会可能「干合」",
+                        "description": ""
+                    }) # 支合
+                if self.check_shigou(relastioship_element, shi["element"]):
+                    event_list.append({
+                        "name": "恋愛機会可能「支合」",
+                        "description": ""
+                    })
+                # 自刑
+                if relastioship_element == shi["element"]:
+                    event_list.append({
+                        "name": "感情紛争注意「自刑」",
+                        "description": ""
+                    })
+                # 支沖
+                if self.check_chichu(relastioship_element, shi["element"]):
+                    event_list.append({
+                        "name": "感情変化注意「支沖」",
+                        "description": ""
+                    })
+            if self.gender == 0:
+                if kan_tsuhen == "正官" or kan_tsuhen == "七殺":
+                    event_list.append({
+                        "name": f"恋愛機会可能「{kan_tsuhen}」",
+                        "description": ""
+                    })
+        return event_list
+
+    def getElementsEnergyMonthConstant(self,month, element):
+        if month not in Meishi.TsukireiKeisuHeader:
+            raise ValueError(f"Invalid month: {month}. Must be one of {Meishi.TsukireiKeisuHeader}")
+        if element not in Meishi.TsukireiKeisuRow:
+            raise ValueError(f"Invalid element: {element}. Must be one of {Meishi.TsukireiKeisuRow}")
+
+        month_index = Meishi.TsukireiKeisuHeader.index(month)
+        element_index = Meishi.TsukireiKeisuRow.index(element)
+
+        return Meishi.TsukireiKeisuMatrix[element_index][month_index]
+
+    def getFiveElementTushenRelation(self):
+        higen_element = Meishi.gogyo[Meishi.gogyo_kan[Meishi.kan.index(self.higen)]]
+        relation = self.gogyo_seikei[higen_element]
+        key_mapping = {'自星': '比劫', '印星': '印綬', '泄星': '食傷', '官星': '官殺', '財星': '財才'}
+
+        # Create the relation dictionary with the new keys
+        relation = {key_mapping[k]: v for k, v in relation.items()}
+
+        # Reverse the key-value pairs
+        reversed_relation = {v: k for k, v in relation.items()}
+        return reversed_relation
+
+    def _build_five_element_energy(self):
+        energy = {
+            "木": 0.0,
+            "火": 0.0,
+            "土": 0.0,
+            "金": 0.0,
+            "水": 0.0,
+        }
+        tsukiren = self.chishi[1]
+
+        for kan in self.tenkan:
+            element_type = self.get_kan_element_type(kan)
+            energy[element_type] += 100
+
+        for shi in self.chishi:
+            for zoukan_name, zoukan_strength in Meishi.ZoukanPointTable[shi].items():
+                zoukan_type = self.get_kan_element_type(zoukan_name)
+                energy[zoukan_type] += zoukan_strength
+
+        for element in energy:
+            energy[element] *= self.getElementsEnergyMonthConstant(tsukiren, element)
+
+        return energy
+
+    def _build_shin_type_ratio(self, energy=None, basis="element_energy"):
+        energy = energy or self._build_five_element_energy()
+        relation = self.getFiveElementTushenRelation()
+        total_energy = sum(energy.values())
+        same_relations = {"比劫", "印綬"}
+
+        same_energy = sum(
+            value for element, value in energy.items()
+            if relation[element] in same_relations
+        )
+        different_energy = total_energy - same_energy
+
+        same_ratio = (same_energy / total_energy) if total_energy else 0.0
+        different_ratio = (different_energy / total_energy) if total_energy else 0.0
+
+        return {
+            "same_ratio": same_ratio,
+            "different_ratio": different_ratio,
+            "delta": same_ratio - different_ratio,
+            "basis": basis,
+        }
+
+    def _determine_shin_type_from_ratio(self, ratio):
+        delta = ratio["delta"]
+        threshold = self.SHIN_TYPE_RATIO_THRESHOLD
+
+        if delta > threshold:
+            return "身旺"
+        if delta < -threshold:
+            return "身弱"
+        return "中和"
+
+    def _symbol_to_element_type(self, symbol):
+        if symbol in Meishi.kan:
+            return self.get_kan_element_type(symbol)
+        if symbol in Meishi.shi:
+            return self.get_shi_element_type(symbol)
+        if symbol in Meishi.gogyo:
+            return symbol
+        return None
+
+    def _single_target_element(self, target):
+        if not target or "/" in str(target):
+            return None
+        return target if target in Meishi.gogyo else None
+
+    def _gouka_season_temper(self, target_element):
+        month = getattr(self, "tsukirei", None) or self.chishi[1]
+        coefficient = self.getElementsEnergyMonthConstant(month, target_element)
+        factor = 1 + (coefficient - 1) * 0.35
+        factor = min(1.35, max(0.85, factor))
+        return {
+            "season_month": month,
+            "season_target": target_element,
+            "season_coefficient": round(coefficient, 4),
+            "season_factor": round(factor, 4),
+        }
+
+    def _build_gouka_adjusted_element_energy(self, base_energy=None, gouka=None):
+        base_energy = base_energy or self._build_five_element_energy()
+        adjusted = {element: float(value) for element, value in base_energy.items()}
+        gouka = gouka or {}
+        resolved = gouka.get("resolved", {})
+        adjustments = []
+
+        state_factor = {
+            "成立": 1.0,
+            "減力": 0.55,
+        }
+        weakening_rate = {
+            "沖": 0.10,
+            "刑": 0.07,
+            "害": 0.05,
+            "破": 0.05,
+            "剋": 0.08,
+        }
+
+        def add_adjustment(item, action, element, delta, note, season_temper=None):
+            if abs(delta) < 0.0001:
+                return
+            adjustment = {
+                "type": item.get("type"),
+                "source_type": item.get("source_type") or item.get("type"),
+                "state": item.get("state"),
+                "relation_element": item.get("element", []),
+                "to": item.get("to"),
+                "score": item.get("score"),
+                "element": element,
+                "delta": round(delta, 4),
+                "action": action,
+                "note": note,
+            }
+            if season_temper:
+                adjustment.update(season_temper)
+            adjustments.append(adjustment)
+
+        def score_strength(item):
+            return (float(item.get("score") or 0) / 100.0) * state_factor.get(item.get("state"), 0.0)
+
+        # 裁決後に成立・減力した刑沖破害剋と合絆を、原局エネルギーへ軽く反映する。
+        for item in list(resolved.get("kan", [])) + list(resolved.get("shi", [])):
+            strength = score_strength(item)
+            if strength <= 0:
+                continue
+
+            source_elements = [
+                self._symbol_to_element_type(symbol)
+                for symbol in item.get("element", [])
+            ]
+            source_elements = [element for element in source_elements if element in adjusted]
+            if not source_elements:
+                continue
+
+            kind = item.get("kind")
+            if kind in weakening_rate:
+                rate = weakening_rate[kind] * strength
+                for element in sorted(set(source_elements)):
+                    delta = adjusted[element] * rate
+                    adjusted[element] = max(0.0, adjusted[element] - delta)
+                    add_adjustment(
+                        item,
+                        "減力",
+                        element,
+                        -delta,
+                        f"{item.get('type')} {item.get('state')}により{element}を{rate:.1%}減力",
+                    )
+                continue
+
+            if kind in {"合", "暗合"}:
+                relation_type = item.get("type")
+                bind_rate = {
+                    "干合": 0.035,
+                    "支合": 0.045,
+                    "暗合": 0.035,
+                    "三合局": 0.060,
+                    "三会局": 0.060,
+                    "半合": 0.040,
+                }.get(relation_type, 0.045 if item.get("realm") == "shi" else 0.035)
+                target_gain_ratio = {
+                    "三合局": 0.75,
+                    "三会局": 0.75,
+                    "半合": 0.45,
+                }.get(relation_type, 0.5)
+                rate = bind_rate * strength
+                total_bound = 0.0
+                for element in sorted(set(source_elements)):
+                    delta = adjusted[element] * rate
+                    adjusted[element] = max(0.0, adjusted[element] - delta)
+                    total_bound += delta
+                    add_adjustment(
+                        item,
+                        "合絆",
+                        element,
+                        -delta,
+                        f"{item.get('type')} {item.get('state')}により{element}を{rate:.1%}合絆",
+                    )
+
+                target = self._single_target_element(item.get("to"))
+                if target:
+                    season_temper = self._gouka_season_temper(target)
+                    gain = total_bound * target_gain_ratio * season_temper["season_factor"]
+                    adjusted[target] += gain
+                    add_adjustment(
+                        item,
+                        "合意",
+                        target,
+                        gain,
+                        f"{item.get('type')}は化成未満のため、化神{target}へ月令調制込みで軽微補正",
+                        season_temper,
+                    )
+
+        # 化成だけは別枠で、元五行の一部を化神へ移す。
+        transform_items = [
+            item
+            for item in list(resolved.get("effective_kan", [])) + list(resolved.get("effective_shi", []))
+            if item.get("type") in {"干化", "支化"} and item.get("state") == "化成"
+        ]
+        for item in transform_items:
+            target = self._single_target_element(item.get("to"))
+            if not target:
+                continue
+
+            source_elements = [
+                self._symbol_to_element_type(symbol)
+                for symbol in item.get("element", [])
+            ]
+            source_elements = [
+                element for element in source_elements
+                if element in adjusted and element != target
+            ]
+            if not source_elements:
+                continue
+
+            source_type = item.get("source_type")
+            season_temper = self._gouka_season_temper(target)
+            transform_base_rate = {
+                "干合": 0.22,
+                "支合": 0.18,
+                "三合局": 0.24,
+                "三会局": 0.24,
+                "半合": 0.14,
+            }.get(source_type, 0.18)
+            base_rate = transform_base_rate * (float(item.get("score") or 0) / 100.0)
+            rate = base_rate * season_temper["season_factor"]
+            total_transfer = 0.0
+            for element in sorted(set(source_elements)):
+                delta = adjusted[element] * rate
+                adjusted[element] = max(0.0, adjusted[element] - delta)
+                total_transfer += delta
+                add_adjustment(
+                    item,
+                    "化出",
+                    element,
+                    -delta,
+                    f"{item.get('type')} 化成により{element}から{target}へ月令調制込みで{rate:.1%}転化",
+                    season_temper,
+                )
+
+            adjusted[target] += total_transfer
+            add_adjustment(
+                item,
+                "化入",
+                target,
+                total_transfer,
+                f"{item.get('type')} 化成により化神{target}へ月令調制込みで転化",
+                season_temper,
+            )
+
+        return {
+            "energy": adjusted,
+            "adjustments": adjustments,
+            "basis": "gouka_resolved",
+            "basis_detail": "gouka_resolved_tsukirei_tempered",
+        }
+
+    # 五行エネルギー計算
+    def computeFiveElementEnergy(self):
+        return self._build_five_element_energy()
+    def computeElementNumber(self,considerZoukan=False):
+        element_count = {
+            "木": 0,
+            "火": 0,
+            "土": 0,
+            "金": 0,
+            "水": 0,
+        }
+        for kan in self.meisiki["kan"]:
+            element_value = kan["element"]
+            element_type = self.get_kan_element_type(element_value)
+            element_count[element_type] += 1
+
+        if considerZoukan:
+            for shi in self.meisiki["shi"]:
+                element = shi["element"]
+                for zoukan in Meishi.ZoukanPointTable[element]:
+                    zoukan_name = zoukan
+                    zoukan_type = self.get_kan_element_type(zoukan_name)
+                    zoukan_strength = Meishi.ZoukanPointTable[element][zoukan]
+                    # 考虑地支本气
+                    element_count[zoukan_type] += 1 * (zoukan_strength/100)
+        else:
+            # 不考虑地支藏干情况
+            for shi in self.meisiki["shi"]:
+                element_value = shi["element"]
+                element_type = self.get_shi_element_type(element_value)
+                element_count[element_type] += 1
+
+
+        return element_count
+
+    # 大運計算
+    def getDaiunList(self, unjun_type, unjun_step=11):
+        # 1. 月柱の干支を取得
+        getsu_kan = self.tenkan[1]
+        getsu_shi = self.chishi[1]
+
+        daiun_kan = []
+        daiun_shi = []
+
+        # 2. 逆順運と順行運の判断
+        if unjun_type == 1:  # 順行運
+            # 干の計算
+            start_kan_idx = Meishi.kan.index(getsu_kan)
+            for i in range(1,unjun_step+1):
+                idx = (start_kan_idx + i) % 10  # 10で割った余りを使用
+                daiun_kan.append(Meishi.kan[idx])
+
+            # 支の計算
+            start_shi_idx = Meishi.shi.index(getsu_shi)
+            for i in range(1,unjun_step+1):
+                idx = (start_shi_idx + i) % 12  # 12で割った余りを使用
+                daiun_shi.append(Meishi.shi[idx])
+
+        else:  # 逆行運
+            # 干の計算
+            start_kan_idx = Meishi.kan.index(getsu_kan)
+            for i in range(1,unjun_step+1):
+                idx = (start_kan_idx - i) % 10  # 10で割った余りを使用
+                daiun_kan.append(Meishi.kan[idx])
+
+            # 支の計算
+            start_shi_idx = Meishi.shi.index(getsu_shi)
+            for i in range(1,unjun_step+1):
+                idx = (start_shi_idx - i) % 12  # 12で割った余りを使用
+                daiun_shi.append(Meishi.shi[idx])
+
+        # 大運の干支を組み合わせる
+        #daiun_kanshi = [f"{kan}{shi}" for kan, shi in zip(daiun_kan, daiun_shi)]
+        daiun_kanshi = {
+            "kan":[],
+            "shi":[]
+        }
+        higen_idx = Meishi.kan.index(self.higen)
+        # 干
+        for element in daiun_kan:
+            element_idx = Meishi.kan.index(element)
+            junshi_idx = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+            daiun_kanshi["kan"].append({
+                "element": element,
+                "tsuhen": Meishi.tsuhen[junshi_idx],
+                "seiun": "-", #星運
+                "relation": {
+                    "year": {
+                        "干合": self.check_kangou(self.tenkan[0], element),
+                    },
+                    "month":{
+                        "干合": self.check_kangou(self.tenkan[1], element),
+                    },
+                    "day": {
+                        "干合":self.check_kangou(self.tenkan[2], element),
+                    },
+                    "time":{
+                        "干合":self.check_kangou(self.tenkan[3], element),
+                    }
+                }
+            })
+        #print(daiun_kanshi)
+
+        # 支の方は、蔵干と通変星の関係に分析
+        print("-------")
+        for element in daiun_shi:
+            shi_zoukan = self.getZoukan(element)
+            zoukan_junshi = []
+            for zoukan in shi_zoukan:
+                if zoukan: #蔵干はなしの場所にあり
+                    element_idx = Meishi.kan.index(zoukan)
+                    junshi_idx = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+                    zoukan_junshi.append({
+                        "element": zoukan,
+                        "tsuhen":Meishi.tsuhen[junshi_idx],
+                    })
+                else:
+                    zoukan_junshi.append("")
+            #大運星運求めて
+            daiun_kanshi["shi"].append({
+                "element": element,
+                "zoukan": zoukan_junshi,
+                "seiun":  self.getJuniunboshi(self.higen,element), # 大運星運の方、日干と大運の地支に求めて
+                "relation": { # 刑･冲･合
+                    "year":{
+                        "支合": self.check_shigou(self.chishi[0],element),
+                        "七冲": self.check_chichu(self.chishi[0],element),
+                    },
+                    "month": {
+                        "支合": self.check_shigou(self.chishi[1], element),
+                        "七冲": self.check_chichu(self.chishi[1], element),
+                    },
+                    "day": {
+                        "支合": self.check_shigou(self.chishi[2], element),
+                        "七冲": self.check_chichu(self.chishi[2], element),
+                    },
+                    "time": {
+                        "支合": self.check_shigou(self.chishi[3], element),
+                        "七冲": self.check_chichu(self.chishi[3], element),
+                    },
+                }
+            })
+
+
+        return daiun_kanshi
+    # 年運計算
+    def getYearList(self,unjun_step=11):
+        # 立運時間に取って
+        # self.ritsun = {
+        #     "unjun_type": unjun_type,
+        #     "year": y,
+        #     "month": m,
+        #     "note": ritsuun_note,
+        #     "unjun_type": unjun_type,  # 運行順：１順行、２逆行
+        # }
+        year = self.ritsun["year"]
+        month = self.ritsun["month"]
+        higen_idx = Meishi.kan.index(self.higen)
+        year = (self.birthdate.year + year) + 1 if month > 4 else (self.birthdate.year + year)
+        # 年間推算（立運時始まる）
+        year_list = []
+
+        for i in range(unjun_step):
+            daiun_time = i * 10
+            yearlist = []
+            for j in range(daiun_time,daiun_time+unjun_step-1):
+                if year + j < 2100:
+                    y = cnlunar.Lunar(datetime.datetime(year + j,3,1,1,1), godType='8char')
+                    kan_idx = Meishi.kan.index(y.year8Char[0])
+                    kan_idx_tsuhen_idx = Meishi.kan_tsuhen[higen_idx].index(kan_idx)
+                    # 蔵干
+                    shi_zoukan = self.getZoukan(y.year8Char[1])
+                    zoukan_junshi = []
+                    for zoukan in shi_zoukan:
+                        if zoukan:  # 蔵干はなしの場所にあり
+                            element_idx = Meishi.kan.index(zoukan)
+                            junshi_idx = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+                            zoukan_junshi.append({
+                                "element": zoukan,
+                                "tsuhen": Meishi.tsuhen[junshi_idx],
+                            })
+                        else:
+                            zoukan_junshi.append("")
+                    kan = {
+                        "element":y.year8Char[0],
+                        "tsuhen":Meishi.tsuhen[kan_idx_tsuhen_idx],
+                    }
+                    shi = {
+                        "element":y.year8Char[1],
+                        "tsuhen":zoukan_junshi[-1]["tsuhen"],
+                        "zoukan":zoukan_junshi,
+                        "seiun": self.getJuniunboshi(self.higen, y.year8Char[1]),
+                    }
+                    yearlist.append({
+                        "age": (j+1),
+                        "year": year + j,
+                        "event": {
+                            "relationship": self.getEvent(kan,shi,type="relationship"),
+                            "work":[],
+                            "health":[],
+                        },
+                        "kan":kan,
+                        "shi":shi
+
+                    })
+                else: break
+
+            # List append
+            year_list.append({
+                "daiun": daiun_time,
+                "list": yearlist
+            })
+        #print(year_list)
+        return year_list
+    # 格局分析
+    def kakyokuAnalysis(self):
+        output = {
+            "pattern": "N/A",
+            "note": "格局分析ステップ:\n"
+        }
+        yueling_tsuhen = self.meisiki["shi"][1]["tsuhen"]
+        output["note"] += f"1. 月令通変星: {yueling_tsuhen}\n"
+
+        # 特別格判断
+        if yueling_tsuhen in ["劫財", "比肩"]:
+            output["pattern"] = f"特別格局（{yueling_tsuhen}あり）"
+            output["note"] += f"2. 特別格局: 月令が{yueling_tsuhen}のため、特別格局と判断\n"
+            return output
+
+        # 一般の方（比肩、劫財除外)
+        output["note"] += "一般格局の分析開始（比肩、劫財を除く）:\n"
+
+        # 1. 月柱の支に蔵干（本気）で透出
+        if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
+            output["pattern"] = f"{self.meisiki['shi'][1]['tsuhen']}格"
+            output["note"] += "1. 月柱の支に蔵干（本気）で透出（月地支透于天干）\n"
+            return output
+
+        # 2. 月柱の支に蔵干（本気以外の気）で透出
+        for i in range(1, len(self.meisiki["shi"][1]["zoukan"])):
+            if self.meisiki["shi"][1]["zoukan"][i]["tsuhen"] == self.meisiki["kan"][1]["tsuhen"]:
+                output["pattern"] = f"{self.meisiki['shi'][1]['zoukan'][i]['tsuhen']}格"
+                output["note"] += "2. 月柱の支に蔵干（本気以外の気）で透出（月地支未透天干，退而求其次）\n"
+                return output
+
+        # 3. 月柱未透月天干、でも月柱以外の柱で透出
+        found = []
+        for j in range(len(self.meisiki["kan"])):
+            if j == 2: continue  # 日元SKIP
+            if self.meisiki["shi"][1]["tsuhen"] == self.meisiki["kan"][j]["tsuhen"]:
+                if not f"{yueling_tsuhen}格" in found: found.append(f"{yueling_tsuhen}格")
+        if len(found) == 1:
+            output["pattern"] = found[0]
+            output["note"] += "3. 月柱未透月天干、でも月柱以外の柱で透出\n"
+            return output
+
+        # 4. 月柱蔵干全て未透、月柱の蔵干全てと全体的柱に探す
+        found = []
+        for shi in self.meisiki["shi"]:
+            for i in range(len(shi["zoukan"])):
+                if shi["zoukan"][i]["tsuhen"]:
+                    yueling_tsuhen = shi["zoukan"][i]["tsuhen"]
+                    for j in range(len(self.meisiki["kan"])):
+                        if j == 2: continue  # 日元SKIP
+                        if yueling_tsuhen == self.meisiki["kan"][j]["tsuhen"]:
+                            if not f"{yueling_tsuhen}格" in found: found.append(f"{yueling_tsuhen}格")
+        if len(found) > 0:
+            output["pattern"] = found
+            output["note"] += "4. 月柱蔵干全て未透、月柱の蔵干全てと全体的柱で探索\n"
+            return output
+
+        # 5. 全体天干と全体地支未透の方（六神通変星）使用
+        found = []
+        for i in range(len(self.meisiki["shi"][1]["zoukan"])):
+            tsuhen = self.meisiki["shi"][1]["zoukan"][i]["tsuhen"]
+            for j in range(len(self.meisiki["kan"])):
+                if j == 2: continue  # 日元SKIP
+                a = self.check_six_ka(tsuhen)
+                b = self.check_six_ka(self.meisiki["kan"][j]["tsuhen"])
+                if a == b:
+                    if not f"虚透{tsuhen}格" in found: found.append(f"虚透{tsuhen}格")
+        if len(found) == 1:
+            output["pattern"] = found[0]
+            output["note"] += "  e. 全体天干と全体地支未透の方（六神通変星）使用: 印、財、食、傷\n"
+            return output
+
+        # 6. さもないと、月令の通変星直接に取って
+        output["pattern"] = f"{self.meisiki['shi'][1]['tsuhen']}格"
+        output["note"] += "  f. 上記すべて該当しないため、月令の通変星を直接採用（比肩、劫財除外）\n"
+
+        return output
+    # 用神分析
+    def younjinAnlysis(self):
+        output = {
+            "younjin": {
+                "element":[],
+                "tsuhen":[]
+            },
+            "kishin": { # 忌神
+                "element": [],
+                "tsuhen": []
+            },
+        }
+        # 日主の旺衰（強弱）を判断
+        shin_point = self.tsukirei_point + self.gogyu_point + self.juniun_point
+        element_type = self.get_kan_element_type(self.higen)
+        if shin_point > 3: # （旺）
+            # 用神：日主を抑える五行（克する、泄する）。
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["泄星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["官星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["財星"])
+            # 忌神：日主をさらに強める五行（生じる、扶ける）。
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["印星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["自星"])
+        else: # （弱）
+            # 用神：日主を助ける五行（生じる、扶ける）。
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["自星"])
+            output["younjin"]["element"].append(self.gogyo_seikei[element_type]["印星"])
+            # 忌神：日主をさらに弱める五行（克する、泄する）。
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["泄星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["官星"])
+            output["kishin"]["element"].append(self.gogyo_seikei[element_type]["財星"])
+        return output
+
+    # 立運計算
+    def getRitsunTime(self):
+        output_steps = ""
+        # 1. 逆順運と順行運判断
+        unjun_type = 0  # 0: 逆行運 1: 順行運
+        gender = "男性" if self.gender == 1 else "女性"
+        output_steps += f"1. 性別: {gender}\n"
+
+        nen_kan_idx = Meishi.kan.index(self.tenkan[0])
+        nen_kan_onmyo = Meishi.kan_onmyo[nen_kan_idx]
+        onmyo = "陽" if nen_kan_onmyo == 1 else "陰"
+        output_steps += f"2. 年干: {self.tenkan[0]}（{onmyo}）\n"
+
+        if self.gender == 1:  # 男命
+            if nen_kan_onmyo == 1:
+                unjun_type = 1
+                output_steps += "3. 男命で年干が陽のため、順行運を適用\n"
+            else:
+                unjun_type = 0
+                output_steps += "3. 男命で年干が陰のため、逆行運を適用\n"
+        else:  # 女命
+            if nen_kan_onmyo == 1:
+                unjun_type = 0
+                output_steps += "3. 女命で年干が陽のため、逆行運を適用\n"
+            else:
+                unjun_type = 1
+                output_steps += "3. 女命で年干が陰のため、順行運を適用\n"
+
+        output_steps += f"4. 適用する運: {'順行運' if unjun_type == 1 else '逆行運'}\n\n"
+
+        # 2. 立運時間推算
+        # → 節気の取得年を決定（フォールバック含む）
+        festivals_year = self.birthdate.year
+        all_12 = self.getTwelveFestivalsForYear(festivals_year)
+        festivals = sorted(
+            datetime.datetime(festivals_year, m, d)
+            for m, d in all_12.values()
+        )
+
+        if unjun_type == 1:
+            # 順行運: 出生日以降の最初の節気
+            applied = next(f for f in festivals if f > self.birthdate)
+        else:
+            # 逆行運: 出生日以前の最後の節気
+            try:
+                applied = next(f for f in reversed(festivals) if f < self.birthdate)
+            except StopIteration:
+                # フォールバック：前年の節気リストを使う
+                festivals_year -= 1
+                output_steps += f"5a. フォールバック: {festivals_year}年の節気を使用\n"
+                all_12 = self.getTwelveFestivalsForYear(festivals_year)
+                festivals = sorted(
+                    datetime.datetime(festivals_year, m, d)
+                    for m, d in all_12.values()
+                )
+                applied = festivals[-1]
+
+        # 5. 適用される節気一覧（○が適用節気）
+        output_steps += f"5. {festivals_year}年の節気:\n"
+        output_steps += "   節気\t月\t日\n"
+        for term, (m, d) in all_12.items():
+            date = datetime.datetime(festivals_year, m, d)
+            marker = " ○" if date == applied else " ."
+            output_steps += f"   {term}\t{m}\t{d}{marker}\n"
+        output_steps += "\n"
+
+        # 6. 日数差の計算
+        if unjun_type == 1:
+            days_diff = (applied - self.birthdate).days
+            output_steps += (
+                f"6. 順行運: 出生日({self.birthdate.date()})以降の最初の節 {applied.date()}*\n"
+            )
+        else:
+            days_diff = (self.birthdate - applied).days
+            output_steps += (
+                f"6. 逆行運: 出生日({self.birthdate.date()})以前の最後の節 {applied.date()}*\n"
+            )
+
+        output_steps += f"7. 日差数: {days_diff}日\n\n"
+
+        # 7. 立運時間の計算（3日で1年、余り1日で4ヶ月）
+        years, rem = divmod(days_diff, 3)
+        months = rem * 4
+        output_steps += "8. 立運時間計算:\n"
+        output_steps += f"   {days_diff} ÷ 3 = {years}年 (余り {rem})\n"
+        output_steps += f"   余り {rem} × 4 = {months}ヶ月\n"
+        output_steps += f"9. 最終結果: {years}年{months}ヶ月\n"
+
+        return years, months, unjun_type, output_steps
+    def getKuBou(self,kan,shi):
+        kanshi = kan+shi
+        for kubou in Meishi.KuBouTable:
+            if kanshi in Meishi.KuBouTable[kubou]:
+                return kubou
+        return "ERROR"
+    def getJuniunboshi(self,kan,shi):
+        kan_idx = Meishi.kan.index(kan)
+        unboshi_idx = Meishi.JuniunboshiMatrix[kan_idx].index(shi)
+        unboshi = Meishi.JuniunTable[unboshi_idx]
+        return unboshi
+    #身汪身弱判断
+    def calculateElementNumber(self):
+        five_elements_number = [0, 0, 0, 0, 0]
+        for idx, ele in enumerate(self.tenkan):  # 天干五行数
+            gogyu_kan_idx = Meishi.gogyo_kan[Meishi.kan.index(ele)]
+            five_elements_number[gogyu_kan_idx] += 1
+
+        for idx, ele in enumerate(self.chishi):  # 地支五行数
+            gogyu_shi_idx = Meishi.gogyo_shi[Meishi.shi.index(ele)]
+            five_elements_number[gogyu_shi_idx] += 1
+        return five_elements_number
+
+    def miouChiyakuCheck(self):
+        def determine_shin_type(total):
+            shin_type = ""
+            if total >= 3:
+                shin_type = "身旺"
+            elif 0 <= total < 3:
+                shin_type = "中和"
+            else:
+                shin_type = "身弱"
+            return shin_type
+
+        note = "身旺弱検定:\n"
+        note += f"日元:「{self.higen}」月令:「{self.chishi[1]}」\n"
+
+        # 日元と月令の分析
+        higen_idx = Meishi.kan.index(self.higen)
+        tsukirei_idx = Meishi.shi.index(self.chishi[1])
+        note += f"日主は「{Meishi.season[Meishi.season_shi[tsukirei_idx]]}」に生まれの「{Meishi.gogyo[Meishi.gogyo_kan[higen_idx]]}」です\n"
+
+        # 1. 月令点分析
+        tsukirei_point = Meishi.TsukireiPointMatrix[higen_idx][tsukirei_idx]
+        note += f"1. 月令点: {tsukirei_point}\n"
+
+        # 2. 五行点分析
+        five_elements_number = self.calculateElementNumber()
+        note += "2. 五行数:\n"
+        for idx, number in enumerate(five_elements_number):
+            note += f"  {Meishi.gogyo[idx]}: {number}\n"
+
+        higen_element = Meishi.gogyo[Meishi.gogyo_kan[higen_idx]]
+        note += "生剋関係:\n"
+        note += "関係\t五行\n"
+        for relation, element in Meishi.gogyo_seikei[higen_element].items():
+            note += f"{relation}:「{element}」\n"
+        note += "\n"
+
+        # 五行点計算
+        seikei_rule = {"自星": 1, "印星": 1, "官星": -1, "財星": -1, "泄星": -1}
+        gogyu_point = 0
+        note += "五行生剋分析:\n"
+        note += "五行\t関係\t五行数\t符号\t得点\n"
+        for type in Meishi.gogyo_seikei[higen_element]:
+            element_name = Meishi.gogyo_seikei[higen_element][type]
+            element_idx = Meishi.gogyo.index(element_name)
+            sign = seikei_rule[type]
+            sign_kanji = "＋" if sign > 0 else "―"
+            n_of_element = five_elements_number[element_idx]
+            point = sign * n_of_element
+            note += f"{element_name}\t{type}\t({n_of_element})\t{sign_kanji}\t{n_of_element}\n"
+            gogyu_point += point
+
+        note += f"五行数得点合計: {gogyu_point}\n\n"
+
+        # 3. 十二運星点分析
+        note += "3. 十二運星点分析:\n"
+        juniun_element_points = [0] * 12
+        note += "運星\t点数\n"
+        for unsei in self.juniunshi:
+            juniun_idx = Meishi.JuniunTable.index(unsei)
+            point = Meishi.JuniunPointTable[unsei]
+            juniun_element_points[juniun_idx] = point
+            note += f"{unsei}\t{point}\n"
+
+        note += "\n十二運星の計算過程:\n"
+        idx_1 = Meishi.JuniunTable.index("建禄")
+        idx_2 = Meishi.JuniunTable.index("帝旺")
+
+        if juniun_element_points[idx_1] > 0 and juniun_element_points[idx_2] > 0:
+            note += "「建禄」と「帝旺」が両方存在します。\n"
+            other_points = [p for i, p in enumerate(juniun_element_points) if i not in [idx_1, idx_2]]
+            max_other = max(other_points) if other_points else 0
+            note += f"「建禄」と「帝旺」以外の最高点: {max_other}\n"
+            juniun_point = max_other + 3
+            note += f"最終十二運星点: {max_other} + 3 (建禄と帝旺のボーナス) = {juniun_point}\n"
+        else:
+            juniun_point = max(juniun_element_points)
+            note += f"最高点を採用: {juniun_point}\n"
+
+        note += f"十二運星点: {juniun_point}\n\n"
+
+        # 合計点数と身旺弱の判定
+        total = gogyu_point + tsukirei_point + juniun_point
+        legacy_shin_type = determine_shin_type(total)
+        energy = self._build_five_element_energy()
+        ratio = self._build_shin_type_ratio(energy)
+        relation = self.getFiveElementTushenRelation()
+        same_elements = [element for element, rel in relation.items() if rel in {"比劫", "印綬"}]
+        different_elements = [element for element, rel in relation.items() if rel not in {"比劫", "印綬"}]
+        delta = ratio["delta"]
+        threshold = self.SHIN_TYPE_RATIO_THRESHOLD
+
+        shin_type = self._determine_shin_type_from_ratio(ratio)
+
+        note += f"最終結果:\n"
+        note += f"同和五行: {', '.join(same_elements)}\n"
+        note += f"異五行: {', '.join(different_elements)}\n"
+        note += f"同和割合: {ratio['same_ratio']:.2%}\n"
+        note += f"異割合: {ratio['different_ratio']:.2%}\n"
+        note += f"差分(同和-異): {delta:.2%}\n"
+        note += f"中和閾値: ±{threshold:.0%}\n"
+        note += f"判定: 「{shin_type}」\n"
+        note += "\n旧算法参考:\n"
+        note += f"月令点: {tsukirei_point}\n"
+        note += f"五行点: {gogyu_point}\n"
+        note += f"十二運星点: {juniun_point}\n"
+        note += f"合計: {total}点\n"
+        note += f"旧算法判定: 「{legacy_shin_type}」\n"
+
+        return shin_type, tsukirei_point, gogyu_point, juniun_point, note, ratio
+
+
+    def getKanTsuhen(self,kan):
+        higen_idx = Meishi.kan.index(self.higen)
+        zoukan_idx = Meishi.kan.index(kan)
+        junshi = Meishi.kan_tsuhen[higen_idx].index(zoukan_idx)
+        junshi = Meishi.tsuhen[junshi]
+        return junshi
+
+    #分析十神特点 (透干、通根、得地、得气)
+    def anlysis_shishen(self):
+        # 列出天干所有十神
+        higen_idx = Meishi.kan.index(self.higen)
+        shishens = {}
+        for ele in self.tenkan:
+            element_idx = Meishi.kan.index(ele)
+            junshi = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+            junshi = Meishi.tsuhen[junshi]
+            shishens[junshi] = {
+                "element": ele,
+                "touchu": [],
+                "tonggen": [],
+            }
+
+        # 天干透出（论阴阳）?
+        for shishen in shishens:
+            element = shishens[shishen]["element"]
+            for zoukan in self.meisiki["shi"]:
+                for idx,z in enumerate(zoukan["zoukan"]):
+                    zoukan_ele = z["element"]
+                    if z["element"] == False: continue
+                    if element == zoukan_ele:
+                        shishens[shishen]["touchu"] = {
+                            "chishi": zoukan["element"],
+                            "tsuhen": zoukan["tsuhen"],
+                            "element": zoukan_ele,
+                            "qi": "本気" if idx == 0 else ("中気" if idx == 1 else "余気")
+                        }
+        # 天干通根（不论阴阳）?
+        for shishen in shishens:
+            element = shishens[shishen]["element"]
+            for zoukan in self.meisiki["shi"]:
+                for idx, z in enumerate(zoukan["zoukan"]):
+                    if z["element"] == False:continue
+                    zoukan_ele = z["element"]
+                    if self.get_kan_element_type(element) == self.get_kan_element_type(zoukan_ele):
+                        shishens[shishen]["tonggen"] = {
+                            "chishi": zoukan["element"],
+                            "tsuhen": z["tsuhen"],
+                            "element": zoukan_ele,
+                            "qi": "本気" if idx == 0 else ("中気" if idx == 1 else "余気")
+                        }
+
+
+        print(shishens)
+        return shishens
+
+    def __init__(self,birthdate,gender=1):
+        self.birthdate = birthdate
+        self.date = cnlunar.Lunar(self.birthdate, godType='8char')
+        self.gender = gender
+        # 天干
+        self.tenkan = [self.date.year8Char[0], self.date.month8Char[0], self.date.day8Char[0], self.date.twohour8Char[0]]
+        # 地支
+        self.chishi = [self.date.year8Char[1], self.date.month8Char[1], self.date.day8Char[1], self.date.twohour8Char[1]]
+        self.zoukan = []
+        for i,element in enumerate(self.chishi):
+            self.zoukan.append(Meishi.zoukan[element])
+        # 日元
+        self.higen = self.date.day8Char[0]
+        higen_idx = Meishi.kan.index(self.higen)
+        # 十神（天干）通変星に求めて
+        self.junshi = []
+        higen_jushi = []
+        for i,element in enumerate(self.tenkan):
+            element_idx = Meishi.kan.index(element)
+            junshi = Meishi.kan_tsuhen[higen_idx].index(element_idx)
+            if not i == 2:
+                higen_jushi.append(Meishi.tsuhen[junshi])
+            else:
+                higen_jushi.append("日元")
+        self.junshi.append(higen_jushi)
+
+        # # 地支（蔵干）通変星に求めて
+        for k in range(3):
+            a = []
+            for i in range(len(self.zoukan)):
+                zoukan_element = self.zoukan[i][k]
+                if not zoukan_element == "":
+                    zoukan_idx = Meishi.kan.index(zoukan_element)
+                    junshi = Meishi.kan_tsuhen[higen_idx].index(zoukan_idx)
+                    junshi = Meishi.tsuhen[junshi]
+                    a.append(junshi)
+                else:
+                    a.append("空")
+            self.junshi.append(a)
+        # 十二運星に求めて
+        self.juniunshi = []
+        for i, element in enumerate(self.chishi):
+            # 1. 十二運星早見表（59ページ参照）を用いて求めます
+            # 2. 日干をもとにして、それぞれの地支をみて求めます
+            unsei = self.getJuniunboshi(self.higen, element)
+            self.juniunshi.append(unsei)
+
+        (
+            self.shin_type,
+            self.tsukirei_point,
+            self.gogyu_point,
+            self.juniun_point,
+            self.shin_type_note,
+            self.shin_type_ratio,
+        ) = self.miouChiyakuCheck()
+        self.five_element_energy = self._build_five_element_energy()
+        self.five_elements_number = self.calculateElementNumber()
+        # 空亡
+        self.kubou = self.getKuBou(self.higen,self.chishi[2])
+
+        self.meisiki = {
+            "kan":[],
+            "shi":[],
+            "kubou":self.kubou,
+        }
+        # Merge Tenkan
+        for idx,k in enumerate(self.tenkan):
+            self.meisiki["kan"].append({
+                "element":k,
+                "tsuhen":self.junshi[0][idx],
+            })
+        # Merge Chishi
+        for idx, c in enumerate(self.chishi):
+            zoukan_elements = []
+            for jdx, z in enumerate(reversed(self.zoukan[idx])):
+                if z:
+                    zoukan_elements.append({
+                        "element":z,
+                        "tsuhen":self.getKanTsuhen(z),
+                    })
+                else:
+                    zoukan_elements.append({
+                        "element": False,
+                        "tsuhen": False,
+                    })
+            self.meisiki["shi"].append({
+                "element": c,
+                "tsuhen": zoukan_elements[0]["tsuhen"],
+                "zoukan":zoukan_elements
+            })
+
+        # 立運時間推算
+        y, m, unjun_type,ritsuun_note = self.getRitsunTime()
+        self.ritsun = {
+            "unjun_type":unjun_type,
+            "year": y,
+            "month": m,
+            "note":ritsuun_note,
+            "unjun_type": unjun_type, #運行順：１順行、２逆行
+        }
+        # 大運時間推算
+        self.daiunList = self.getDaiunList(unjun_type)
+        self.yearList = self.getYearList()
+        # 用神
+        self.younjin = self.younjinAnlysis()
+        # 格局 (かっきょく)
+        self.kakyoku = self.kakyokuAnalysis()
+
+        # 推算通变星
+        self.tsukirei = self.meisiki["shi"][1]["element"]
+        season_energy = {
+            "木": self.getGogyoEnergyFromMonth(self.tsukirei,"木"),
+            "火": self.getGogyoEnergyFromMonth(self.tsukirei,"火"),
+            "土": self.getGogyoEnergyFromMonth(self.tsukirei,"土"),
+            "金": self.getGogyoEnergyFromMonth(self.tsukirei,"金"),
+            "水": self.getGogyoEnergyFromMonth(self.tsukirei,"水"),
+        }
+        self.element_energy = {
+            "energy": self.five_element_energy,
+            "element_number": self.computeElementNumber(considerZoukan=True),
+            "relation": self.getFiveElementTushenRelation(),
+            "season": self.tsukirei,
+            "season_energy": season_energy,
+        }
+        # 合化状況
+        gk = Gouka(meishiki=self.meisiki)
+
+        self.gouka = gk.gouka
+        adjusted_energy_payload = self._build_gouka_adjusted_element_energy(
+            base_energy=self.five_element_energy,
+            gouka=self.gouka,
+        )
+        self.five_element_energy_adjusted = adjusted_energy_payload["energy"]
+        self.shin_type_ratio_adjusted = self._build_shin_type_ratio(
+            self.five_element_energy_adjusted,
+            basis="element_energy_gouka_adjusted",
+        )
+        self.shin_type_adjusted = self._determine_shin_type_from_ratio(self.shin_type_ratio_adjusted)
+        self.element_energy_adjusted = {
+            "energy": self.five_element_energy_adjusted,
+            "element_number": self.element_energy["element_number"],
+            "relation": self.element_energy["relation"],
+            "season": self.element_energy["season"],
+            "season_energy": self.element_energy["season_energy"],
+            "adjustments": adjusted_energy_payload["adjustments"],
+            "basis": adjusted_energy_payload["basis"],
+            "basis_detail": adjusted_energy_payload.get("basis_detail"),
+        }
+
+        self.trend = Daiun(self)
+
+        self.shishen_anlysis = self.anlysis_shishen()
+        print("OK")
+
+if __name__ == '__main__':
+    date = datetime.datetime(1997, 2, 14, 2, 25)
+
+    meishi = Meishi(date)
+    kankou = meishi.check_kangou("己","甲")
+    #y,m,debug = meishi.getRitsunTime()
+
+    # print(y,m)
+    # print(debug)
+    # print("十神:", meishi.junshi)
+    # print("天干:",meishi.tenkan)
+    # print("地支:",meishi.chishi)
+    # print("蔵干:",meishi.zoukan)
+    # print(date)
+    # out = ""
+    # for shi in meishi.junshi:
+    #     out += f"\t{str(shi)}\t"
+    # print(out)
+    # out = ""
+    # for elem in meishi.tenkan:
+    #     out += f"\t{str(elem)}\t"
+    # print(out)
+    # out = ""
+    # for elem in meishi.chishi:
+    #     out += f"\t{str(elem)}\t"
+    # print(out)
+    #
+    #
+    # out = "蔵干"
+    # for elem in meishi.zoukan:
+    #     out += f"\t{str(elem[-1])}\t"
+    # print(out)
+    # out = ""
+    # for elem in meishi.zoukan:
+    #     out += f"\t{str(elem[-2])}\t"
+    # print(out)
+    # out = ""
+    # for elem in meishi.zoukan:
+    #     out += f"\t{str(elem[-3])}\t"
+    # print(out)
+
+

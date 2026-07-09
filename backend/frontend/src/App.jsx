@@ -1,24 +1,32 @@
-import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Link  } from "react-router-dom"
+import { useEffect, useRef, useState } from "react";
+import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 
-import Debug from "./page/Debug"
-import NotFound from "./page/NotFound"
-import Home from "./page/Home"
-import Calendar from "./page/Calendar"
-import PercisionDebug from './page/PercisionDebug'
-import Suimei from './page/Suimei'
-import Login from './page/Login'
+import Sidebar from "./components/Sidebar";
+import api, { ACCESS_TOKEN, AUTH_CHANGED_EVENT, clearStoredAuthTokens } from "./api";
+import { clearLastActiveProfile, getLastActiveProfileId, setLastActiveProfile } from "./lib/adminChatStorage";
+import Login from "./page/Login";
+import Debug from "./page/Debug";
+import NotFound from "./page/NotFound";
+import Calendar from "./page/Calendar";
+import PercisionDebug from "./page/PercisionDebug";
+import Suimei from "./page/Suimei";
 
-import Sidebar from './components/Sidebar'
-import api, { ACCESS_TOKEN, AUTH_CHANGED_EVENT, clearStoredAuthTokens } from './api'
-
-// Define a constant for the header height
-const HEADER_HEIGHT = '30px'
+const HEADER_HEIGHT = "30px";
+const MOBILE_BREAKPOINT = 960;
+const SIDEBAR_WIDTH = 280;
 
 function App() {
+  const profileRestoreRef = useRef({ userId: null, complete: false });
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [authUser, setAuthUser] = useState(null);
+  const [meishiki, setSelectedProfile] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== "undefined" ? window.innerWidth <= MOBILE_BREAKPOINT : false
+  );
+
   const fetchCurrentUser = async () => {
     try {
-      const res = await api.get('/api/me');
+      const res = await api.get("/api/me");
       return res.data;
     } catch (error) {
       console.error(error);
@@ -26,18 +34,15 @@ function App() {
     }
   };
 
-  // Side bar related function
-  const [sidebarVisible, setSidebarVisible] = useState(false);
-  const sidebarWidth = sidebarVisible ? '280px' : '0px';
-  const [authUser, setAuthUser] = useState(null);
+  useEffect(() => {
+    const updateViewportMode = () => {
+      setIsMobileViewport(window.innerWidth <= MOBILE_BREAKPOINT);
+    };
 
-  // !! important !!: global select meishiki profile data
-  const [meishiki,setSelectedProfile] = useState(false)
-
-
-  useEffect(()=> {
-    console.log(meishiki)
-  },[meishiki])
+    updateViewportMode();
+    window.addEventListener("resize", updateViewportMode);
+    return () => window.removeEventListener("resize", updateViewportMode);
+  }, []);
 
   useEffect(() => {
     if (!localStorage.getItem(ACCESS_TOKEN)) return;
@@ -81,7 +86,72 @@ function App() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthState);
   }, []);
 
+  useEffect(() => {
+    if (!authUser?.id || !authUser?.is_admin) {
+      profileRestoreRef.current = { userId: null, complete: false };
+      return;
+    }
+
+    if (profileRestoreRef.current.userId === authUser.id && profileRestoreRef.current.complete) {
+      return;
+    }
+
+    profileRestoreRef.current = { userId: authUser.id, complete: false };
+    const lastProfileId = getLastActiveProfileId(authUser.id);
+    if (!lastProfileId) {
+      profileRestoreRef.current = { userId: authUser.id, complete: true };
+      return;
+    }
+
+    let active = true;
+    api
+      .get(`/api/meishiki/${lastProfileId}/`)
+      .then((res) => {
+        if (!active) return;
+        setSelectedProfile(res.data);
+      })
+      .catch((error) => {
+        if (!active) return;
+        if (error?.response?.status === 403 || error?.response?.status === 404) {
+          clearLastActiveProfile(authUser.id, lastProfileId);
+        }
+      })
+      .finally(() => {
+        if (!active) return;
+        profileRestoreRef.current = { userId: authUser.id, complete: true };
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser?.id || !authUser?.is_admin) return;
+    if (profileRestoreRef.current.userId !== authUser.id || !profileRestoreRef.current.complete) return;
+
+    if (meishiki?.id) {
+      setLastActiveProfile(authUser.id, meishiki);
+      return;
+    }
+
+    clearLastActiveProfile(authUser.id);
+  }, [authUser, meishiki]);
+
+  useEffect(() => {
+    if (!isMobileViewport || !sidebarVisible) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileViewport, sidebarVisible]);
+
   const isAuthenticated = Boolean(authUser && localStorage.getItem(ACCESS_TOKEN));
+  const headerHeight = HEADER_HEIGHT;
+  const desktopSidebarOffset = !isMobileViewport && sidebarVisible ? `${SIDEBAR_WIDTH}px` : "0px";
 
   const handleLogout = () => {
     clearStoredAuthTokens();
@@ -89,91 +159,74 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* Fixed header */}
-      <div
-        className="header-debug"
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: HEADER_HEIGHT,
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'left',
-        }}
-      >
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', width: '100%' }}>
+      <div className="header-debug" style={{ height: headerHeight }}>
+        <ul className="header-debug-list">
           {isAuthenticated ? (
-            <li>
-              <a onClick={()=>{setSidebarVisible(!sidebarVisible)}}>「檔案」</a>
+            <li className="header-debug-item">
+              <button type="button" className="header-debug-link" onClick={() => setSidebarVisible((current) => !current)}>
+                {"\u300c\u30d5\u30a1\u30a4\u30eb\u300d"}
+              </button>
             </li>
           ) : null}
-          <li>
-            <Link to="/">「通常版」</Link>
+          <li className="header-debug-item">
+            <Link to="/">{"\u300c\u901a\u5e38\u7248\u300d"}</Link>
           </li>
-          <li>
-            <Link to="/v2">「精密版」</Link>
+          <li className="header-debug-item">
+            <Link to="/v2">{"\u300c\u7cbe\u5bc6\u7248\u300d"}</Link>
           </li>
           {isAuthenticated ? (
-            <li>
-              <a onClick={handleLogout}>「ログアウト」</a>
+            <li className="header-debug-item">
+              <button type="button" className="header-debug-link" onClick={handleLogout}>
+                {"\u300c\u30ed\u30b0\u30a2\u30a6\u30c8\u300d"}
+              </button>
             </li>
           ) : (
-            <li>
-              <Link to="/login">「ログイン」</Link>
+            <li className="header-debug-item">
+              <Link to="/login">{"\u300c\u30ed\u30b0\u30a4\u30f3\u300d"}</Link>
             </li>
           )}
-          <li>
-            「使い方❓」
-          </li>
-          <li style={{ marginLeft: '0', color: 'lightblue' }}>
-            ･ Developer: Nurupo | 三木照山法参考です、詳しくは『決定版 四柱推命学の完全独習』を見る
+          <li className="header-debug-item">{"\u300c\u4f7f\u3044\u65b9?\u300d"}</li>
+          <li className="header-debug-note">
+            Developer: Nurupo 
           </li>
         </ul>
       </div>
 
-      {/* Content area below header */}
-      <div
-        style={{
-          display: 'flex',
-          marginTop: HEADER_HEIGHT,
-          height: `calc(100vh - ${HEADER_HEIGHT})`
-        }}
-      >
-        {/* Fixed sidebar on the left */}
+      <div className="app-shell" style={{ marginTop: headerHeight, height: `calc(100dvh - ${headerHeight})` }}>
         <div
+          className={`app-sidebar-frame${sidebarVisible ? " is-visible" : ""}${isMobileViewport ? " is-mobile" : ""}`}
           style={{
-            position: 'fixed',
-            top: HEADER_HEIGHT,
-            left: 0,
-            width: sidebarWidth,
-            height: `calc(100vh - ${HEADER_HEIGHT})`,
-            borderRight: '1px solid #ccc',
-            padding: '10px',
-            backgroundColor: '#fff',
-            overflowY: 'auto',
-            transition: 'width 0.3s ease',
-            display: sidebarVisible ? 'block' : 'none'
+            top: headerHeight,
+            width: isMobileViewport ? "100vw" : `${SIDEBAR_WIDTH}px`,
+            height: `calc(100dvh - ${headerHeight})`,
           }}
         >
           {isAuthenticated ? (
             <Sidebar
               isVisible={sidebarVisible}
-              onToggle={() => setSidebarVisible(!sidebarVisible)}
+              isMobile={isMobileViewport}
+              onToggle={() => setSidebarVisible(false)}
               setSelectedProfile={setSelectedProfile}
             />
           ) : null}
         </div>
 
-        {/* Main content, shifted to the right by sidebar width */}
+        {sidebarVisible && isMobileViewport ? (
+          <button
+            type="button"
+            className="app-sidebar-backdrop"
+            onClick={() => setSidebarVisible(false)}
+            aria-label="ファイルメニューを閉じる"
+            style={{ top: headerHeight }}
+          />
+        ) : null}
+
         <div
+          className={`app-main${sidebarVisible && isMobileViewport ? " is-sidebar-open" : ""}`}
           style={{
-            marginLeft: sidebarVisible ? sidebarWidth : '0px',
-            width: sidebarVisible ? `calc(100% - ${sidebarWidth})` : '100%',
-            overflowY: 'auto',
-            height: `calc(100vh - ${HEADER_HEIGHT})`,
-            transition: 'margin-left 0.3s ease, width 0.3s ease'
+            marginLeft: desktopSidebarOffset,
+            width: !isMobileViewport && sidebarVisible ? `calc(100% - ${SIDEBAR_WIDTH}px)` : "100%",
+            height: `calc(100dvh - ${headerHeight})`,
           }}
         >
           <Routes>
@@ -188,6 +241,7 @@ function App() {
                   setSelectedProfile={setSelectedProfile}
                   isAuthenticated={isAuthenticated}
                   isAdmin={Boolean(authUser?.is_admin)}
+                  authUserId={authUser?.id || null}
                 />
               }
             />
@@ -197,7 +251,7 @@ function App() {
         </div>
       </div>
     </BrowserRouter>
-  )
+  );
 }
 
-export default App
+export default App;

@@ -30,6 +30,13 @@ class Gouka:
         ("巳", "酉", "丑", "金"),
     ]
 
+    sanhui = [
+        ("亥", "子", "丑", "水"),
+        ("寅", "卯", "辰", "木"),
+        ("巳", "午", "未", "火"),
+        ("申", "酉", "戌", "金"),
+    ]
+
     banhe = [
         ("申", "子", "水"),
         ("子", "辰", "水"),
@@ -147,6 +154,7 @@ class Gouka:
         "干合": 62,
         "支合": 60,
         "三合局": 76,
+        "三会局": 76,
         "半合": 56,
         "暗合": 48,
         "干沖": 72,
@@ -256,19 +264,22 @@ class Gouka:
         for index, shi_data in enumerate(self.meishiki["shi"]):
             branch_positions.setdefault(shi_data["element"], []).append(index)
 
-        used_sanhe_pairs = set()
-        for group in self.sanhe:
-            members = group[:3]
-            target = group[3]
-            if all(member in branch_positions for member in members):
+        used_full_group_pairs = set()
+        for relation_type, groups in (("三合局", self.sanhe), ("三会局", self.sanhui)):
+            for group in groups:
+                members = group[:3]
+                target = group[3]
+                if not all(member in branch_positions for member in members):
+                    continue
+
                 indexes = [branch_positions[member][0] for member in members]
-                relations.append(self._build_candidate("shi", "三合局", "合", list(members), indexes, target))
+                relations.append(self._build_candidate("shi", relation_type, "合", list(members), indexes, target))
                 for left_index in range(len(members)):
                     for right_index in range(left_index + 1, len(members)):
-                        used_sanhe_pairs.add(frozenset([members[left_index], members[right_index]]))
+                        used_full_group_pairs.add(frozenset([members[left_index], members[right_index]]))
 
         for left, right, target in self.banhe:
-            if left in branch_positions and right in branch_positions and frozenset([left, right]) not in used_sanhe_pairs:
+            if left in branch_positions and right in branch_positions and frozenset([left, right]) not in used_full_group_pairs:
                 relations.append(
                     self._build_candidate(
                         "shi",
@@ -398,7 +409,7 @@ class Gouka:
         return resolved
 
     def _judge_transformation(self, candidate, peers):
-        if candidate["type"] not in {"干合", "支合", "三合局", "半合"}:
+        if candidate["type"] not in {"干合", "支合", "三合局", "三会局", "半合"}:
             return {
                 "eligible": False,
                 "state": "不适用",

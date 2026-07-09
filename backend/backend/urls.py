@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import TemplateView
-from suimei.views import BunsekiView, CreateUserView, CurrentUserView, PrecisionFlowView, SuimeiView
+from suimei.views import BunsekiChatStreamView, BunsekiChatView, BunsekiStreamView, BunsekiView, ChatSessionDetailView, ChatSessionListCreateView, ChatSessionMessagesView, ChatSessionStreamView, CreateUserView, CurrentUserView, PrecisionFlowView, SuimeiView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -33,6 +33,13 @@ urlpatterns = [
     path("api/query", SuimeiView.as_view(), name="query"),
     path("api/precision-flow", PrecisionFlowView.as_view(), name="precision-flow"),
     path("api/gpt", BunsekiView.as_view(), name="query"),
+    path("api/gpt/stream", BunsekiStreamView.as_view(), name="bunseki-stream"),
+    path("api/gpt/chat", BunsekiChatView.as_view(), name="bunseki-chat"),
+    path("api/gpt/chat/stream", BunsekiChatStreamView.as_view(), name="bunseki-chat-stream"),
+    path("api/gpt/chat/sessions", ChatSessionListCreateView.as_view(), name="chat-session-list-create"),
+    path("api/gpt/chat/sessions/<int:session_id>", ChatSessionDetailView.as_view(), name="chat-session-detail"),
+    path("api/gpt/chat/sessions/<int:session_id>/messages", ChatSessionMessagesView.as_view(), name="chat-session-messages"),
+    path("api/gpt/chat/sessions/<int:session_id>/stream", ChatSessionStreamView.as_view(), name="chat-session-stream"),
 
     path('api/', include(router.urls)),
 

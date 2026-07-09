@@ -6,6 +6,7 @@ const UNKNOWN_PILLAR_TEXT = '不明';
 const PLACEHOLDER_VALUES = new Set(['', null, undefined, false, '・', '･', UNKNOWN_PILLAR_TEXT]);
 const VALID_STEMS = new Set(['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']);
 const VALID_BRANCHES = new Set(['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']);
+const HE_LIKE_RELATION_TYPES = new Set(['干合', '支合', '三合局', '三会局', '半合']);
 const STATE_LABELS = {
   成立: '成立',
   減力: '減力',
@@ -93,7 +94,7 @@ function formatRelation(item) {
 function formatRelationLabel(item) {
   const type = item?.type || '';
   if (!type) return '';
-  if (item?.to && type.includes('合')) {
+  if (item?.to && HE_LIKE_RELATION_TYPES.has(type)) {
     return `${type}化${item.to}`;
   }
   return item?.to ? `${type}${item.to}` : type;
@@ -122,6 +123,19 @@ function filterSummary(items, birthTimeUnknown) {
   if (!Array.isArray(items)) return [];
   if (!birthTimeUnknown) return items;
   return items.filter((item) => !String(item).includes('時柱') && !String(item).includes('时柱'));
+}
+
+function collectRelationPoints(containerNode, relationId, containerRect) {
+  return Array.from(containerNode.querySelectorAll(`[data-relation-id="${relationId}"]`))
+    .map((node) => {
+      const rect = node.getBoundingClientRect();
+      return {
+        column: Number(node.getAttribute('data-relation-column') || 0),
+        x: rect.left + rect.width / 2 - containerRect.left,
+        y: rect.top + rect.height / 2 - containerRect.top,
+      };
+    })
+    .sort((left, right) => left.column - right.column);
 }
 
 function SimpleList({ items, emptyText }) {
@@ -254,28 +268,15 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
     const processData = (data, prefix) => {
       data.forEach((item, rowIdx) => {
         const lineId = `gouka-${prefix}-${rowIdx}`;
-        const startEl = containerRef.current.querySelector(`.${lineId}-start`);
-        const endEl = containerRef.current.querySelector(`.${lineId}-end`);
-
-        if (!startEl || !endEl) return;
-
-        const startRect = startEl.getBoundingClientRect();
-        const endRect = endEl.getBoundingClientRect();
-        const x1 = startRect.left + startRect.width / 2 - containerRect.left;
-        const y1 = startRect.top + startRect.height / 2 - containerRect.top;
-        const x2 = endRect.left + endRect.width / 2 - containerRect.left;
-        const y2 = endRect.top + endRect.height / 2 - containerRect.top;
+        const points = collectRelationPoints(containerRef.current, lineId, containerRect);
+        if (points.length < 2) return;
 
         newLines.push({
           key: relationKey(item),
-          x1,
-          y1,
-          x2,
-          y2,
+          points,
           color: 'black',
           thickness: 1.2,
           label: formatRelationLabel(item),
-          offset: 10,
         });
       });
     };
@@ -347,6 +348,8 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                   <div
                     key={`${lineId}-${colIdx}-${elementIndex}`}
                     className={`gouka-element ${endpointClass}${isActive ? ' gouka-element-active' : ''}`.trim()}
+                    data-relation-id={lineId}
+                    data-relation-column={itemIndex}
                   >
                     {item.element[elementIndex]}
                   </div>
@@ -423,34 +426,31 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
             height={svgSize.height}
           >
             {lines.map((line, index) => {
-              const { key, x1, y1, x2, y2, color, thickness, label, offset } = line;
+              const { key, points, color, thickness, label } = line;
               const isActive = activeRelationKey === key;
-              const angle = Math.atan2(y2 - y1, x2 - x1);
-              const offsetX = Math.cos(angle) * offset;
-              const offsetY = Math.sin(angle) * offset;
-              const newX1 = x1 + offsetX;
-              const newY1 = y1 + offsetY;
-              const newX2 = x2 - offsetX;
-              const newY2 = y2 - offsetY;
-              const midX = (newX1 + newX2) / 2;
-              const midY = (newY1 + newY2) / 2;
-              const computedAngle = (angle * 180) / Math.PI;
-              const labelAngle = computedAngle > 90
-                ? computedAngle - 180
-                : (computedAngle < -90 ? computedAngle + 180 : computedAngle);
+              const firstPoint = points[0];
+              const lastPoint = points[points.length - 1];
+              const midX = (firstPoint.x + lastPoint.x) / 2;
+              const midY = (firstPoint.y + lastPoint.y) / 2;
               const labelWidth = Math.max(40, String(label || '').length * 13 + 12);
 
               return (
                 <g key={index}>
-                  <line
-                    x1={newX1}
-                    y1={newY1}
-                    x2={newX2}
-                    y2={newY2}
-                    stroke={isActive ? '#e64841' : color}
-                    strokeWidth={isActive ? thickness + 1.8 : thickness}
-                    strokeOpacity={isActive ? 1 : 0.85}
-                  />
+                  {points.slice(0, -1).map((point, pointIndex) => {
+                    const nextPoint = points[pointIndex + 1];
+                    return (
+                      <line
+                        key={`${key}-segment-${pointIndex}`}
+                        x1={point.x}
+                        y1={point.y}
+                        x2={nextPoint.x}
+                        y2={nextPoint.y}
+                        stroke={isActive ? '#e64841' : color}
+                        strokeWidth={isActive ? thickness + 1.8 : thickness}
+                        strokeOpacity={isActive ? 1 : 0.85}
+                      />
+                    );
+                  })}
                   {label ? (
                     <>
                       <rect
@@ -459,7 +459,6 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                         width={labelWidth}
                         height={20}
                         fill={isActive ? '#fff4cf' : 'white'}
-                        transform={`rotate(${labelAngle}, ${midX}, ${midY})`}
                       />
                       <text
                         x={midX}
@@ -469,7 +468,6 @@ export default function GoukaAnlysis({ tableWidth, response, active = true }) {
                         fill={isActive ? '#b42318' : color}
                         fontSize="12"
                         fontWeight={isActive ? '700' : '400'}
-                        transform={`rotate(${labelAngle}, ${midX}, ${midY})`}
                       >
                         {label}
                       </text>

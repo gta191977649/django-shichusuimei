@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from .model.chat import ChatMessage, ChatSession
 from .model.meishiki import Meishiki
 from .model.wiki import Wiki
 from .model.bunseki import Bunseki
@@ -26,6 +27,36 @@ class BunsekiSerializer(serializers.ModelSerializer):
     class Meta:
         model = Bunseki
         fields = '__all__'
+
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ["id", "role", "content", "reasoning", "created_at"]
+
+
+class ChatSessionSummarySerializer(serializers.ModelSerializer):
+    meishiki_id = serializers.IntegerField(read_only=True)
+    message_count = serializers.IntegerField(read_only=True)
+    last_message_preview = serializers.SerializerMethodField()
+    last_message_created_at = serializers.DateTimeField(read_only=True)
+
+    class Meta:
+        model = ChatSession
+        fields = [
+            "id",
+            "title",
+            "meishiki_id",
+            "created_at",
+            "updated_at",
+            "message_count",
+            "last_message_preview",
+            "last_message_created_at",
+        ]
+
+    def get_last_message_preview(self, obj):
+        preview = str(getattr(obj, "last_message_preview", "") or "").strip()
+        return preview[:120]
 
 
 
