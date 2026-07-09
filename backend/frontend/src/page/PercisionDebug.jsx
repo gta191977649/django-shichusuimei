@@ -827,7 +827,7 @@ export default function PercisionDebug({
     return () => {
       active = false;
     };
-  }, [activeChatSession?.messageCount, activeChatSessionId, chatEnabled]);
+  }, [activeChatSessionId, chatEnabled]);
 
   useEffect(() => {
     if (!activeChatSession) {
@@ -2624,6 +2624,5 @@ export default function PercisionDebug({
     </>
   );
 }
-
 
 
