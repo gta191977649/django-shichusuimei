@@ -3,6 +3,7 @@ import { memo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Virtuoso } from "react-virtuoso";
+import { ArrowDown } from "lucide-react";
 
 const MarkdownContent = memo(function MarkdownContent({ children }) {
   return (
@@ -165,8 +166,14 @@ export default function ChatMessageList({
         }}
       />
       {showJumpToLatest ? (
-        <button type="button" className="pd-action-button pd-chat-jump-latest" onClick={onJumpToLatest}>
-          Back to latest
+        <button
+          type="button"
+          className="pd-action-button pd-chat-jump-latest"
+          onClick={onJumpToLatest}
+          aria-label="回到最新消息"
+          title="回到最新消息"
+        >
+          <ArrowDown size={18} strokeWidth={2.25} aria-hidden="true" />
         </button>
       ) : null}
     </div>

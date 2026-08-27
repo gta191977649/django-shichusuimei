@@ -63,7 +63,7 @@ describe("ChatMessageList", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: "Back to latest" }));
+    await user.click(screen.getByRole("button", { name: "回到最新消息" }));
     expect(onJumpToLatest).toHaveBeenCalledTimes(1);
   });
 

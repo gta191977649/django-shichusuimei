@@ -6,6 +6,7 @@ import Tabs from "react-bootstrap/Tabs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import html2canvas from "html2canvas";
+import { ArrowDown } from "lucide-react";
 import PrecisionMeishikiBoard from "./subpage/PrecisionMeishikiBoard";
 import GoukaAnlysis from "../components/GoukaAnlysis";
 import ElementFlow from "../components/ElementFlow";
@@ -1204,7 +1205,7 @@ export default function PercisionDebug({
     if (!activeChatMessages.length) return;
     if (!shouldForceScrollToBottomRef.current && !shouldAutoFollowTypingRef.current) return;
 
-    const targetIndex = activeChatMessages.length - 1;
+    const targetIndex = chatFirstItemIndex + activeChatMessages.length - 1;
     const frameId = window.requestAnimationFrame(() => {
       [inlineChatVirtuosoRef, fullscreenChatVirtuosoRef].forEach((ref) => {
         ref.current?.scrollToIndex?.({
@@ -1902,7 +1903,7 @@ export default function PercisionDebug({
     );
 
   const handleJumpToLatest = () => {
-    const targetIndex = Math.max(0, activeChatMessages.length - 1);
+    const targetIndex = Math.max(0, chatFirstItemIndex + activeChatMessages.length - 1);
     shouldForceScrollToBottomRef.current = true;
     shouldAutoFollowTypingRef.current = true;
     setHasUnreadLatest(false);
@@ -1932,7 +1933,7 @@ export default function PercisionDebug({
         firstItemIndex={chatFirstItemIndex}
         onLoadOlder={loadOlderMessages}
         atBottomThreshold={CHAT_BOTTOM_THRESHOLD}
-        atBottomStateChange={(isAtBottom) => {
+        onBottomStateChange={(isAtBottom) => {
           setChatAtBottom(isAtBottom);
           if (!isAtBottom && chatTyping) {
             shouldAutoFollowTypingRef.current = false;
@@ -1944,7 +1945,7 @@ export default function PercisionDebug({
         followOutput={(isAtBottom) =>
           shouldForceScrollToBottomRef.current || shouldAutoFollowTypingRef.current || isAtBottom
         }
-        showJumpToLatest={hasUnreadLatest}
+        showJumpToLatest={extraClass.includes("fullscreen") ? !chatAtBottom : hasUnreadLatest}
         onJumpToLatest={handleJumpToLatest}
       />
     );

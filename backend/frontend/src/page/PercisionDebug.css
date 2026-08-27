@@ -679,7 +679,14 @@
   right: 20px;
   bottom: 22px;
   z-index: 2;
-  min-width: auto;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.14);
 }
 
@@ -2005,6 +2012,10 @@
   .pd-chat-jump-latest {
     right: 16px;
     bottom: 18px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    flex: 0 0 42px;
   }
 
   .pd-chat-fullscreen-shell {
