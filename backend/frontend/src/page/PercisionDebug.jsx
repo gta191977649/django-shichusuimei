@@ -135,8 +135,6 @@ export default function PercisionDebug({
   const [isProfileBaziOpen, setIsProfileBaziOpen] = useState(false);
   const [selectedElementInsight, setSelectedElementInsight] = useState(null);
   const [isElementInsightOpen, setIsElementInsightOpen] = useState(false);
-  const [isInlineChatCollapsed, setIsInlineChatCollapsed] = useState(true);
-  const [isInlineChatSessionsCollapsed, setIsInlineChatSessionsCollapsed] = useState(true);
   const [isChatSidebarOpen, setIsChatSidebarOpen] = useState(false);
   const [isChatSidebarCollapsed, setIsChatSidebarCollapsed] = useState(false);
   const [profileChoices, setProfileChoices] = useState([]);
@@ -1397,8 +1395,6 @@ export default function PercisionDebug({
   }, [profile?.id]);
 
   useEffect(() => {
-    setIsInlineChatSessionsCollapsed(true);
-    setIsInlineChatCollapsed(true);
   }, [profile?.id]);
 
   useEffect(() => {
@@ -2421,77 +2417,6 @@ export default function PercisionDebug({
           </section>
         </div>
 
-        {isAuthenticated && isAdmin ? (
-          <div className="col-12">
-            <section className="pd-panel">
-              <div className="pd-panel-head">
-                <div>
-                  <div className="pd-panel-title">AI会話</div>
-                  <div className="pd-panel-caption">この命局とAI解読について質問できます。</div>
-                </div>
-                <div className="pd-actions">
-                  <button
-                    type="button"
-                    className="pd-action-button"
-                    onClick={() => setIsInlineChatCollapsed((current) => !current)}
-                  >
-                    {isInlineChatCollapsed ? "▶ 開く" : "▼ 閉じる"}
-                  </button>
-                  {profile?.id ? (
-                    <button type="button" className="pd-action-button" onClick={() => setIsChatFullscreen(true)}>
-                      最大化
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-
-              {isInlineChatCollapsed ? null : !profile?.id ? (
-                <div className="pd-empty-state">先に命局を保存するとAI会話を利用できます。</div>
-              ) : (
-                <>
-                  <div className="pd-chat-session-toolbar">
-                    <button
-                      type="button"
-                      className="pd-action-button"
-                      onClick={handleCreateChatSession}
-                      disabled={chatLoading || chatTyping}
-                    >
-                      新規会話
-                    </button>
-                  </div>
-
-                  <div
-                    className={`pd-chat-session-panel${
-                      isInlineChatSessionsCollapsed ? " is-collapsed" : ""
-                    }`}
-                  >
-                    <div className="pd-chat-session-head">
-                      <div className="pd-chat-session-summary">
-                        <div className="pd-chat-session-label">会話履歴</div>
-                        {!isInlineChatSessionsCollapsed ? (
-                          <div className="pd-chat-session-caption">{displayName} の履歴会話</div>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        className="pd-chat-session-toggle"
-                        onClick={() => setIsInlineChatSessionsCollapsed((current) => !current)}
-                        aria-expanded={!isInlineChatSessionsCollapsed}
-                      >
-                        {isInlineChatSessionsCollapsed ? "▶ 開く" : "▼ 閉じる"}
-                      </button>
-                    </div>
-                    {!isInlineChatSessionsCollapsed ? renderChatSessionItems() : null}
-                  </div>
-
-                  {renderChatMessages(inlineChatVirtuosoRef)}
-                  {renderChatStatuses()}
-                  {renderChatComposer()}
-                </>
-              )}
-            </section>
-          </div>
-        ) : null}
         <div className="col-12">
           <section className="pd-panel">
             <div className="pd-panel-head">
