@@ -32,6 +32,7 @@ from .service.prompt_builder import (
     build_chat_prompt_from_meishiki,
     build_prompt_from_meishiki,
 )
+from .service.five_element_energy import calculate_natal_energy, calculate_personalized_range
 
 MAX_CHAT_HISTORY_MESSAGES = 8
 MAX_CHAT_QUESTION_LENGTH = 2000
@@ -1255,6 +1256,114 @@ class PrecisionFlowView(APIView):
             day_index=day_index,
         )
         return Response(payload, status=status.HTTP_200_OK)
+
+
+def _five_element_flow_period(mode, anchor_date):
+    """Resolve the requested BaZi flow-year/month to concrete daily chart bounds."""
+    if mode == "flow_day":
+        start_date = anchor_date - datetime.timedelta(days=anchor_date.weekday())
+        end_date = start_date + datetime.timedelta(days=6)
+        ticks = {}
+        for offset in range(7):
+            cursor = start_date + datetime.timedelta(days=offset)
+            lunar = cnlunar.Lunar(datetime.datetime.combine(cursor, datetime.time(12, 0)), godType="8char")
+            ticks[cursor.isoformat()] = f"{lunar.day8Char[0]}\n{lunar.day8Char[1]}\n• \n{cursor.month}月{cursor.day}日"
+        return start_date, end_date, {"mode": mode, "currentDate": anchor_date.isoformat(), "ticks": ticks}
+
+    flow_year = _resolve_flow_year(datetime.datetime.combine(anchor_date, datetime.time(12, 0)))
+    terms = _build_flow_month_term_dates(flow_year)
+    if mode == "flow_year":
+        start_date = terms[0]["date"]
+        end_date = _build_flow_month_term_dates(flow_year + 1)[0]["date"] - datetime.timedelta(days=1)
+        ticks = {}
+        periods = []
+        current_index = _resolve_period_index(terms, anchor_date)
+        for index, term in enumerate(terms):
+            lunar = cnlunar.Lunar(datetime.datetime.combine(term["date"], datetime.time(12, 0)), godType="8char")
+            ticks[term["date"].isoformat()] = f"{lunar.month8Char[0]}\n{lunar.month8Char[1]}\n• \n{term['month']}月{term['day']}日"
+            period_end = (terms[index + 1]["date"] if index + 1 < len(terms) else _build_flow_month_term_dates(flow_year + 1)[0]["date"]) - datetime.timedelta(days=1)
+            periods.append({"start": term["date"].isoformat(), "end": period_end.isoformat()})
+        return start_date, end_date, {"mode": mode, "flowYear": flow_year, "currentDate": terms[current_index]["date"].isoformat(), "ticks": ticks, "periods": periods}
+
+    index = _resolve_period_index(terms, anchor_date)
+    start_date = terms[index]["date"]
+    end_date = (terms[index + 1]["date"] if index + 1 < len(terms) else _build_flow_month_term_dates(flow_year + 1)[0]["date"]) - datetime.timedelta(days=1)
+    lunar = cnlunar.Lunar(datetime.datetime.combine(start_date, datetime.time(12, 0)), godType="8char")
+    ticks = {}
+    cursor = start_date
+    while cursor <= end_date:
+        day_lunar = cnlunar.Lunar(datetime.datetime.combine(cursor, datetime.time(12, 0)), godType="8char")
+        ticks[cursor.isoformat()] = f"{day_lunar.day8Char[0]}\n{day_lunar.day8Char[1]}\n• \n{cursor.month}月{cursor.day}日"
+        cursor += datetime.timedelta(days=1)
+    return start_date, end_date, {"mode": mode, "flowYear": flow_year, "flowMonth": f"{lunar.month8Char[0]}{lunar.month8Char[1]}", "currentDate": anchor_date.isoformat(), "ticks": ticks}
+
+
+def _aggregate_flow_month_points(points, periods):
+    by_date = {point["date"]: point for point in points}
+    aggregated = []
+    for period in periods:
+        cursor = datetime.date.fromisoformat(period["start"])
+        end_date = datetime.date.fromisoformat(period["end"])
+        group = []
+        while cursor <= end_date:
+            group.append(by_date[cursor.isoformat()])
+            cursor += datetime.timedelta(days=1)
+        first = group[0]
+        point = {key: first[key] for key in ("date", "month", "flowYearPillar", "flowDayPillar")}
+        for key, value in first.items():
+            if isinstance(value, dict) and all(isinstance(number, (int, float)) for number in value.values()):
+                point[key] = {element: sum(item[key][element] for item in group) / len(group) for element in value}
+            elif key in {"balanceIndex", "imbalanceIndex"}:
+                point[key] = sum(item[key] for item in group) / len(group)
+        point["dominantElement"] = max(point["energy"], key=point["energy"].__getitem__)
+        point["dominanceStrength"] = point["energy"][point["dominantElement"]]
+        aggregated.append(point)
+    return aggregated
+
+
+class FiveElementEnergyView(APIView):
+    permission_classes = [AllowAny]
+    MAX_RANGE_DAYS = 366 * 5
+
+    def get(self, request):
+        start_text = request.query_params.get("start")
+        end_text = request.query_params.get("end")
+        range_mode = request.query_params.get("range", "custom")
+        anchor_text = request.query_params.get("anchor")
+        birth_date = request.query_params.get("birthDate")
+        birth_time = request.query_params.get("birthTime")
+        if not birth_date or not birth_time:
+            return Response({"detail": "birthDate and birthTime are required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            if range_mode in {"flow_year", "flow_month", "flow_day"}:
+                anchor_date = datetime.date.fromisoformat(anchor_text) if anchor_text else datetime.date.today()
+                start_date, end_date, time_axis = _five_element_flow_period(range_mode, anchor_date)
+            else:
+                start_date = datetime.date.fromisoformat(start_text)
+                end_date = datetime.date.fromisoformat(end_text)
+                time_axis = {"mode": "custom", "ticks": {}}
+            birth_datetime = datetime.datetime.strptime(f"{birth_date} {birth_time}", "%Y-%m-%d %H:%M")
+        except (ValueError, KeyError):
+            return Response({"detail": "birthDate/birthTime or start/end has an invalid format"}, status=status.HTTP_400_BAD_REQUEST)
+        if start_date > end_date:
+            return Response({"detail": "start must not be after end"}, status=status.HTTP_400_BAD_REQUEST)
+        if (end_date - start_date).days + 1 > self.MAX_RANGE_DAYS:
+            return Response({"detail": "date range must not exceed five years"}, status=status.HTTP_400_BAD_REQUEST)
+        natal = calculate_natal_energy(birth_datetime)
+        data = calculate_personalized_range(natal, start_date, end_date)
+        if range_mode == "flow_year":
+            data = _aggregate_flow_month_points(data, time_axis["periods"])
+        return Response({
+            "start": start_date.isoformat(), "end": end_date.isoformat(), "count": len(data), "timeAxis": time_axis,
+            "birth": {"date": birth_date, "time": birth_time, "timezone": request.query_params.get("timezone", "")},
+            "natal": {
+                "pillars": {"year": natal.year_pillar, "month": natal.month_pillar, "day": natal.day_pillar, "hour": natal.hour_pillar},
+                "dayMaster": natal.day_master, "energy": natal.energy, "entropy": natal.entropy, "balanceIndex": natal.balance_index,
+                "dominantElement": natal.dominant_element, "dominanceStrength": natal.dominance_strength,
+                "tenGodRelations": natal.ten_god_relations,
+            },
+            "weights": {"effects": {"year": 0.15, "month": 0.45, "day": 0.40}, "natalPillars": {"year": 0.15, "month": 0.30, "day": 0.35, "hour": 0.20}}, "data": data,
+        })
 
 
 class SuimeiView(APIView):

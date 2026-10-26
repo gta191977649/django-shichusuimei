@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { cloneElement, Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import api from "../../api";
 import Element from "../../components/Element";
 
@@ -183,15 +183,22 @@ const renderZoukanLines = (zoukan = [], getClickConfig = null) => (
   </div>
 );
 
+const FLOW_STAR_ABBREVIATIONS = {
+  比肩: "比", 劫財: "劫", 劫财: "劫", 食神: "食", 傷官: "傷", 伤官: "傷",
+  偏財: "才", 偏财: "才", 正財: "財", 正财: "財", 七殺: "殺", 七杀: "殺", 偏官: "殺",
+  正官: "官", 偏印: "梟", 正印: "印",
+};
+const abbreviateFlowStar = (star) => FLOW_STAR_ABBREVIATIONS[star] || star;
+
 const renderPillarStack = (stem, branch, tsuhen, branchTsuhen) => (
   <div className="pd-flow-column-stack">
-    <div className="pd-flow-column-main">{renderElementOrBlank(stem, tsuhen, "pd-flow-element-ruby")}</div>
-    <div className="pd-flow-column-main">{renderElementOrBlank(branch, branchTsuhen, "pd-flow-element-ruby")}</div>
+    <div className="pd-flow-column-main" title={tsuhen}>{renderElementOrBlank(stem, abbreviateFlowStar(tsuhen), "pd-flow-element-ruby")}</div>
+    <div className="pd-flow-column-main" title={branchTsuhen}>{renderElementOrBlank(branch, abbreviateFlowStar(branchTsuhen), "pd-flow-element-ruby")}</div>
   </div>
 );
 
-const renderOverviewCell = (content, className = "", style = undefined) => (
-  <div className={`pd-overview-cell ${className}`.trim()} style={style}>{content}</div>
+const renderOverviewCell = (content, className = "", style = undefined, key = undefined) => (
+  <div key={key} data-pillar={key} className={`pd-overview-cell ${className}`.trim()} style={style}>{content}</div>
 );
 
 const renderElementOrBlank = (value, tsuhen = "", className = "", clickConfig = null) =>
@@ -219,24 +226,6 @@ const collectRelationPoints = (containerNode, relationId, gridRect) =>
     })
     .sort((left, right) => left.column - right.column);
 
-const padFlowItems = (items, targetLength, prefix) => {
-  const padded = [...items];
-  while (padded.length < targetLength) {
-    padded.push({
-      key: `${prefix}-placeholder-${padded.length}`,
-      topPrimary: "",
-      topSecondary: "",
-      stem: "",
-      branch: "",
-      tsuhen: "",
-      branchTsuhen: "",
-      active: false,
-      placeholder: true,
-    });
-  }
-  return padded;
-};
-
 export default function PrecisionMeishikiBoard({
   data,
   requestInput,
@@ -255,6 +244,9 @@ export default function PrecisionMeishikiBoard({
   const [selectedDayIndex, setSelectedDayIndex] = useState(initialSelection.selectedDayIndex);
   const [selection, setSelection] = useState(initialSelection);
   const [loadingSelection, setLoadingSelection] = useState(false);
+  const [selectionError, setSelectionError] = useState(null);
+  const [expandedFlowColumns, setExpandedFlowColumns] = useState(false);
+  const selectionRequestRef = useRef(0);
   const flowBoardScrollRefs = useRef({});
   const overviewGridRef = useRef(null);
   const [relationSvgSize, setRelationSvgSize] = useState({ width: 0, height: 0 });
@@ -262,12 +254,16 @@ export default function PrecisionMeishikiBoard({
   const [expandedRelations, setExpandedRelations] = useState({ kan: false, shi: false });
 
   useEffect(() => {
+    ++selectionRequestRef.current;
+    setLoadingSelection(false);
+    setSelectionError(null);
     const nextSelection = normalizeSelectionPayload(precision);
     setSelection(nextSelection);
     setSelectedDaiunIndex(precision?.active_daiun?.index ?? 0);
     setSelectedYear(nextSelection.flowYearValue);
     setSelectedMonthIndex(nextSelection.selectedMonthIndex);
     setSelectedDayIndex(nextSelection.selectedDayIndex);
+    return () => { ++selectionRequestRef.current; };
   }, [precision]);
 
   const selectedYearList = useMemo(
@@ -275,18 +271,11 @@ export default function PrecisionMeishikiBoard({
     [selectedDaiunIndex, yearGroups]
   );
 
-  useEffect(() => {
-    if (!precision) return;
-    if (selectedYear == null) return;
-    if (!selectedYearList.length) return;
-    if (selectedYearList.some((item) => item.year === selectedYear)) return;
-    const fallbackYear = selectedYearList[0].year;
-    void loadYearSelection(fallbackYear);
-  }, [precision, selectedYear, selectedYearList]);
-
-  const fetchPrecisionSelection = async ({ year, monthIndex, dayIndex }) => {
-    if (!requestInput?.date || !requestInput?.time || year == null) return null;
-
+  const loadSelection = async (params) => {
+    const { year, monthIndex = 0, dayIndex = 0, daiunIndex = selectedDaiunIndex } = params;
+    if (!requestInput?.date || !requestInput?.time || year == null) return;
+    const requestId = ++selectionRequestRef.current;
+    setSelectionError(null);
     setLoadingSelection(true);
     try {
       const res = await api.post("/api/precision-flow", {
@@ -298,63 +287,30 @@ export default function PrecisionMeishikiBoard({
         month_index: monthIndex,
         day_index: dayIndex,
       });
-      return normalizeSelectionPayload(res.data || {});
-    } catch (err) {
-      console.error(err);
-      return null;
+      if (requestId !== selectionRequestRef.current) return;
+      const payload = normalizeSelectionPayload(res.data || {});
+      setSelection(payload);
+      setSelectedDaiunIndex(daiunIndex);
+      setSelectedYear(payload.flowYearValue);
+      setSelectedMonthIndex(payload.selectedMonthIndex);
+      setSelectedDayIndex(payload.selectedDayIndex);
+    } catch {
+      if (requestId === selectionRequestRef.current) setSelectionError({ ...params, daiunIndex });
     } finally {
-      setLoadingSelection(false);
+      if (requestId === selectionRequestRef.current) setLoadingSelection(false);
     }
   };
 
-  const loadYearSelection = async (year) => {
-    const payload = await fetchPrecisionSelection({ year, monthIndex: 0, dayIndex: 0 });
-    if (!payload) return;
-
-    setSelection((current) => ({
-      ...current,
-      flowYearValue: payload.flowYearValue,
-      flowYear: payload.flowYear,
-      flowMonths: payload.flowMonths,
-      flowMonth: payload.flowMonth,
-      flowDays: payload.flowDays,
-      flowDay: payload.flowDay,
-      selectedMonthIndex: payload.selectedMonthIndex ?? 0,
-      selectedDayIndex: payload.selectedDayIndex ?? 0,
-    }));
-    setSelectedYear(payload.flowYearValue);
-    setSelectedMonthIndex(payload.selectedMonthIndex ?? 0);
-    setSelectedDayIndex(payload.selectedDayIndex ?? 0);
-  };
-
-  const loadMonthSelection = async (year, monthIndex) => {
-    const payload = await fetchPrecisionSelection({ year, monthIndex, dayIndex: 0 });
-    if (!payload) return;
-
-    setSelection((current) => ({
-      ...current,
-      flowYearValue: payload.flowYearValue,
-      flowYear: payload.flowYear,
-      flowMonths: payload.flowMonths,
-      flowMonth: payload.flowMonth,
-      flowDays: payload.flowDays,
-      flowDay: payload.flowDay,
-      selectedMonthIndex: payload.selectedMonthIndex ?? monthIndex ?? 0,
-      selectedDayIndex: payload.selectedDayIndex ?? 0,
-    }));
-    setSelectedYear(payload.flowYearValue);
-    setSelectedMonthIndex(payload.selectedMonthIndex ?? monthIndex ?? 0);
-    setSelectedDayIndex(payload.selectedDayIndex ?? 0);
-  };
-
   const currentDaiun = daiunSnapshots[selectedDaiunIndex] || precision?.active_daiun || null;
-  const selectedYearInfo = selectedYearList.find((item) => item.year === selectedYear) || null;
   const flowDays = selection?.flowDays?.items || [];
   const resolvedDayIndex = flowDays.length ? Math.min(selectedDayIndex, flowDays.length - 1) : 0;
   const currentFlowDay = flowDays[resolvedDayIndex] || selection?.flowDay || null;
   const currentSelectionSnapshot = normalizeSelectionPayload(precision);
 
   const handleSelectToday = () => {
+    ++selectionRequestRef.current;
+    setLoadingSelection(false);
+    setSelectionError(null);
     setSelection(currentSelectionSnapshot);
     setSelectedDaiunIndex(precision?.active_daiun?.index ?? 0);
     setSelectedYear(currentSelectionSnapshot.flowYearValue);
@@ -362,11 +318,15 @@ export default function PrecisionMeishikiBoard({
     setSelectedDayIndex(currentSelectionSnapshot.selectedDayIndex);
   };
 
-  const daiunTitle = `大運表・${data?.ritsun_time?.year ?? 0}年${data?.ritsun_time?.month ?? 0}ヶ月立運「${
-    data?.ritsun_time?.unjun_type === 0 ? "逆行運" : "順行運"
-  }」`;
+  const selectDay = (index) => {
+    ++selectionRequestRef.current;
+    setLoadingSelection(false);
+    setSelectionError(null);
+    setSelectedDayIndex(index);
+    setSelection((current) => ({ ...current, flowDay: flowDays[index], selectedDayIndex: index }));
+  };
 
-  const overviewColumns = useMemo(() => [
+  const allOverviewColumns = useMemo(() => [
     {
       key: "flow-day",
       label: "流日",
@@ -472,6 +432,14 @@ export default function PrecisionMeishikiBoard({
       nayin: natal?.time?.nayin || "",
     },
   ], [currentFlowDay, selection?.flowMonth, selection?.flowYear, currentDaiun, data, natal]);
+  const overviewColumns = useMemo(
+    () => expandedFlowColumns ? allOverviewColumns : allOverviewColumns.slice(2),
+    [allOverviewColumns, expandedFlowColumns]
+  );
+
+  const mapOverviewColumns = (render) => overviewColumns.map((column) =>
+    cloneElement(render(column), { key: column.key, "data-pillar": column.key })
+  );
 
   const buildInsightClickConfig = useCallback(
     (columnKey, part, symbol, tsuhen) => {
@@ -571,21 +539,7 @@ export default function PrecisionMeishikiBoard({
   }, [recomputeRelationLines]);
 
   const renderRelationOverviewRows = (label, relations, prefix, expanded, onToggle) => {
-    if (!expanded) {
-      return renderOverviewCell(
-        <button
-          type="button"
-          className="pd-relation-toggle pd-relation-toggle-collapsed"
-          onClick={onToggle}
-          aria-expanded={false}
-        >
-          <span>{label}</span>
-          <span className="pd-relation-toggle-arrow">▼</span>
-        </button>,
-        "pd-overview-relation-collapsed",
-        { gridColumn: `span ${overviewColumns.length + 1}` }
-      );
-    }
+    if (!expanded) return null;
 
     const displayRelations = expanded && relations.length
       ? relations
@@ -619,12 +573,12 @@ export default function PrecisionMeishikiBoard({
             <Fragment key={relation.key}>
               {overviewColumns.map((column, columnIndex) => {
                 if (relation.placeholder) {
-                  return renderOverviewCell(<span className="pd-relation-empty">-</span>, relationCellClass);
+                  return renderOverviewCell(<span className="pd-relation-empty">-</span>, relationCellClass, undefined, column.key);
                 }
 
                 const relationColumnIndex = relation.index.indexOf(columnIndex);
                 if (relationColumnIndex < 0) {
-                  return renderOverviewCell(<span className="pd-relation-empty"> </span>, relationCellClass);
+                  return renderOverviewCell(<span className="pd-relation-empty"> </span>, relationCellClass, undefined, column.key);
                 }
 
                 const markerSide = relationColumnIndex === 0
@@ -646,7 +600,7 @@ export default function PrecisionMeishikiBoard({
                       {markerElement}
                     </span>
                   </div>,
-                  relationCellClass
+                  relationCellClass, undefined, column.key
                 );
               })}
             </Fragment>
@@ -656,11 +610,10 @@ export default function PrecisionMeishikiBoard({
     );
   };
 
-  const renderFlowBoard = (boardKey, sectionTitle, topLabel, sideLabel, items, extraClass = "") => (
-    <section className={`pd-flow-board ${extraClass}`.trim()}>
+  const renderFlowBoard = (boardKey, sectionTitle, items) => (
+    <section className="pd-flow-board" aria-label={sectionTitle}>
       <div className="pd-flow-board-side">
-        <div className="pd-flow-board-side-top">{topLabel}</div>
-        <div className="pd-flow-board-side-main">{sideLabel}</div>
+        <div className="pd-flow-board-side-main">{sectionTitle}</div>
       </div>
       <div
         className="pd-flow-board-scroll"
@@ -670,40 +623,28 @@ export default function PrecisionMeishikiBoard({
       >
         <div
           className="pd-flow-board-columns"
-          style={{
-            gridTemplateColumns: `repeat(${flowBoardColumnCount}, minmax(0, 1fr))`,
-            width: `${(Math.max(flowBoardColumnCount, 10) / 10) * 76}%`,
-          }}
+          style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, var(--pd-flow-column-width))` }}
         >
           {items.map((item) => (
-            item.placeholder ? (
-              <div key={item.key} className="pd-flow-column pd-flow-column-placeholder" aria-hidden="true">
-                <div className="pd-flow-column-top">
-                  <div className="pd-flow-column-top-primary">&nbsp;</div>
-                  <div className="pd-flow-column-top-secondary">&nbsp;</div>
-                </div>
-                <div className="pd-flow-column-bottom">
-                  <div className="pd-flow-column-stack pd-flow-column-stack-placeholder">&nbsp;</div>
-                </div>
-              </div>
-            ) : (
               <button
                 key={item.key}
                 type="button"
                 className={`pd-flow-column ${item.active ? "is-active" : ""}`.trim()}
                 onClick={item.onClick}
-                title={sectionTitle}
+                aria-label={`${sectionTitle} ${item.topPrimary} ${item.topSecondary} ${item.stem || ""}${item.branch || ""}`}
+                aria-pressed={item.active}
+                title={`${sectionTitle} ${item.topPrimary} ${item.topSecondary} ${item.tsuhen || ""} / ${item.branchTsuhen || ""}`}
               >
                 <div className="pd-flow-column-top">
                   <div className="pd-flow-column-top-primary">{item.topPrimary}</div>
-                  <div className="pd-flow-column-top-secondary">{item.topSecondary || " "}</div>
+                  {item.topSecondary && <div className="pd-flow-column-top-secondary">{item.topSecondary}</div>}
                 </div>
                 <div className="pd-flow-column-bottom">
                   {renderPillarStack(item.stem, item.branch, item.tsuhen, item.branchTsuhen)}
                 </div>
               </button>
-            )
           ))}
+          {!items.length && <div className="pd-compact-empty">データなし</div>}
         </div>
       </div>
     </section>
@@ -711,8 +652,8 @@ export default function PrecisionMeishikiBoard({
 
   const daiunItems = daiunSnapshots.map((item) => ({
     key: `daiun-${item.index}`,
-    topPrimary: item.start_age ?? "-",
-    topSecondary: item.start_year ?? "-",
+    topPrimary: item.start_year ?? "-",
+    topSecondary: item.start_age != null ? `${item.start_age}歳` : "",
     stem: item.tenkan,
     branch: item.chishi,
     tsuhen: item.kan_tsuhen,
@@ -720,9 +661,8 @@ export default function PrecisionMeishikiBoard({
     active: item.index === selectedDaiunIndex,
     onClick: async () => {
       const nextYear = yearGroups[item.index]?.list?.[0]?.year ?? null;
-      setSelectedDaiunIndex(item.index);
       if (nextYear != null) {
-        await loadYearSelection(nextYear);
+        await loadSelection({ year: nextYear, daiunIndex: item.index });
       }
     },
   }));
@@ -730,14 +670,14 @@ export default function PrecisionMeishikiBoard({
   const yearItems = selectedYearList.map((item) => ({
     key: `year-${item.year}`,
     topPrimary: item.year,
-    topSecondary: item.age != null ? `${item.age}歳` : "",
+    topSecondary: "",
     stem: item.kan?.element,
     branch: item.shi?.element,
     tsuhen: item.kan?.tsuhen,
     branchTsuhen: item.shi?.tsuhen || "",
     active: item.year === selectedYear,
     onClick: async () => {
-      await loadYearSelection(item.year);
+      await loadSelection({ year: item.year });
     },
   }));
 
@@ -751,7 +691,7 @@ export default function PrecisionMeishikiBoard({
     branchTsuhen: item.shi_tsuhen,
     active: index === selectedMonthIndex,
     onClick: async () => {
-      await loadMonthSelection(selectedYear, index);
+      await loadSelection({ year: selectedYear, monthIndex: index });
     },
   }));
 
@@ -764,28 +704,8 @@ export default function PrecisionMeishikiBoard({
     tsuhen: item.kan_tsuhen,
     branchTsuhen: item.shi_tsuhen,
     active: index === resolvedDayIndex,
-    onClick: () => {
-      setSelectedDayIndex(index);
-      setSelection((current) => ({
-        ...current,
-        flowDay: item,
-        selectedDayIndex: index,
-      }));
-    },
+    onClick: () => selectDay(index),
   }));
-
-  const flowBoardColumnCount = Math.max(
-    daiunItems.length,
-    yearItems.length,
-    monthItems.length,
-    dayItems.length,
-    1
-  );
-
-  const alignedDaiunItems = padFlowItems(daiunItems, flowBoardColumnCount, "daiun");
-  const alignedYearItems = padFlowItems(yearItems, flowBoardColumnCount, "year");
-  const alignedMonthItems = padFlowItems(monthItems, flowBoardColumnCount, "month");
-  const alignedDayItems = padFlowItems(dayItems, flowBoardColumnCount, "day");
 
   const scrollActiveFlowColumnIntoView = (boardKey) => {
     const scrollNode = flowBoardScrollRefs.current[boardKey];
@@ -794,49 +714,61 @@ export default function PrecisionMeishikiBoard({
     const activeNode = scrollNode.querySelector(".pd-flow-column.is-active");
     if (!(activeNode instanceof HTMLElement)) return;
 
-    activeNode.focus({ preventScroll: true });
-    activeNode.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
+    const containerRect = scrollNode.getBoundingClientRect();
+    const activeRect = activeNode.getBoundingClientRect();
+    if (activeRect.left >= containerRect.left && activeRect.right <= containerRect.right) return;
+    scrollNode.scrollTo({
+      left: scrollNode.scrollLeft + activeRect.left - containerRect.left - (containerRect.width - activeRect.width) / 2,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
   };
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => scrollActiveFlowColumnIntoView("daiun"));
     return () => window.cancelAnimationFrame(frameId);
-  }, [selectedDaiunIndex, alignedDaiunItems.length]);
+  }, [selectedDaiunIndex, daiunItems.length]);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => scrollActiveFlowColumnIntoView("year"));
     return () => window.cancelAnimationFrame(frameId);
-  }, [selectedYear, alignedYearItems.length]);
+  }, [selectedYear, yearItems.length]);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => scrollActiveFlowColumnIntoView("month"));
     return () => window.cancelAnimationFrame(frameId);
-  }, [selectedMonthIndex, alignedMonthItems.length]);
+  }, [selectedYear, selectedMonthIndex, monthItems.length]);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => scrollActiveFlowColumnIntoView("day"));
     return () => window.cancelAnimationFrame(frameId);
-  }, [resolvedDayIndex, alignedDayItems.length]);
+  }, [selectedYear, selectedMonthIndex, resolvedDayIndex, dayItems.length]);
 
   return (
-    <>
+    <div className="pd-compact-board">
+      <div className="pd-compact-toolbar" aria-label="命式表示設定">
+        <button type="button" aria-expanded={expandedFlowColumns} onClick={() => setExpandedFlowColumns((value) => !value)}>
+          {expandedFlowColumns ? "流月・流日を閉じる" : "流月・流日を表示"}
+        </button>
+        {[["kan", "天干関係"], ["shi", "地支関係"]].map(([key, label]) => (
+          <button key={key} type="button" aria-expanded={expandedRelations[key]}
+            onClick={() => setExpandedRelations((current) => ({ ...current, [key]: !current[key] }))}>
+            {label} {expandedRelations[key] ? "▴" : "▾"}
+          </button>
+        ))}
+      </div>
       <section className="pd-grid-panel">
         <div className="pd-overview-scroll">
           <div className="pd-overview-relation-wrap">
             <div
               ref={overviewGridRef}
               className="pd-overview-grid"
-              style={{ gridTemplateColumns: `78px repeat(${overviewColumns.length}, minmax(82px, 1fr))` }}
+              style={{ gridTemplateColumns: `44px repeat(${overviewColumns.length}, minmax(48px, 1fr))` }}
             >
-              {renderOverviewCell("-", "pd-overview-head pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(column.label, "pd-overview-head"))}
+              {renderOverviewCell("日期", "pd-overview-head pd-overview-side")}
+              {mapOverviewColumns((column) => renderOverviewCell(column.label, "pd-overview-head"))}
 
               {renderOverviewCell("主星", "pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(renderTopStarText(column.topStar), "pd-overview-star"))}
+              {mapOverviewColumns((column) => renderOverviewCell(renderTopStarText(column.topStar), "pd-overview-star"))}
 
               {renderRelationOverviewRows(
                 "天干関係",
@@ -847,7 +779,7 @@ export default function PrecisionMeishikiBoard({
               )}
 
               {renderOverviewCell("天干", "pd-overview-side")}
-              {overviewColumns.map((column) =>
+              {mapOverviewColumns((column) =>
                 renderOverviewCell(
                   renderElementOrBlank(
                     column.stem,
@@ -860,7 +792,7 @@ export default function PrecisionMeishikiBoard({
               )}
 
               {renderOverviewCell("地支", "pd-overview-side")}
-              {overviewColumns.map((column) =>
+              {mapOverviewColumns((column) =>
                 renderOverviewCell(
                   renderElementOrBlank(
                     column.branch,
@@ -881,7 +813,7 @@ export default function PrecisionMeishikiBoard({
               )}
 
               {renderOverviewCell("蔵干", "pd-overview-side pd-overview-side-top")}
-              {overviewColumns.map((column) =>
+              {mapOverviewColumns((column) =>
                 renderOverviewCell(
                   renderZoukanLines(column.zoukan, (part, symbol, tsuhen) =>
                     buildInsightClickConfig(column.key, part, symbol, tsuhen)
@@ -891,16 +823,16 @@ export default function PrecisionMeishikiBoard({
               )}
 
               {renderOverviewCell("星運", "pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(column.seiun || " "))}
+              {mapOverviewColumns((column) => renderOverviewCell(column.seiun || " "))}
 
               {renderOverviewCell("自坐", "pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(column.jizuo || " "))}
+              {mapOverviewColumns((column) => renderOverviewCell(column.jizuo || " "))}
 
               {renderOverviewCell("空亡", "pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(column.kubou || " "))}
+              {mapOverviewColumns((column) => renderOverviewCell(column.kubou || " "))}
 
               {renderOverviewCell("納音", "pd-overview-side")}
-              {overviewColumns.map((column) => renderOverviewCell(column.nayin || " "))}
+              {mapOverviewColumns((column) => renderOverviewCell(column.nayin || " "))}
             </div>
 
             <svg
@@ -950,60 +882,33 @@ export default function PrecisionMeishikiBoard({
         </div>
       </section>
 
-      <section className="pd-flow-cluster">
-        <div className="pd-grid-head">
-          <div className="pd-grid-head-main">
-            <div className="pd-grid-title">{daiunTitle}</div>
-            <div className="pd-meishiki-summary">
-              <div className="pd-meishiki-current pd-meishiki-date-wrap">
-                <span className="pd-meishiki-date-label">日期:</span>
-                <select
-                  className="pd-meishiki-date-select"
-                  value={currentFlowDay?.date || ""}
-                  onChange={(e) => {
-                    const nextIndex = flowDays.findIndex((item) => item.date === e.target.value);
-                    if (nextIndex >= 0) {
-                      setSelectedDayIndex(nextIndex);
-                      setSelection((current) => ({
-                        ...current,
-                        flowDay: flowDays[nextIndex],
-                        selectedDayIndex: nextIndex,
-                      }));
-                    }
-                  }}
-                  disabled={!flowDays.length}
-                >
-                  {flowDays.map((item) => (
-                    <option key={item.date} value={item.date}>
-                      {formatDate(item.date)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="pd-meishiki-current">
-                起運: 出生後{data?.ritsun_time?.year ?? 0}年{data?.ritsun_time?.month ?? 0}ヶ月
-              </div>
-              <div className="pd-meishiki-current">
-                選択: {selectedYear || "-"}年 / {selection?.flowMonth?.term || "-"} / {currentFlowDay?.display || "-"}
-              </div>
-              {loadingSelection ? <div className="pd-meishiki-current">読込中…</div> : null}
-            </div>
-          </div>
-          <button type="button" className="pd-action-button pd-meishiki-today" onClick={handleSelectToday}>
-            今日
-          </button>
+      <div className="pd-compact-summary">
+        <div className="pd-compact-start">
+          起運: 出生後{data?.ritsun_time?.year ?? 0}年{data?.ritsun_time?.month ?? 0}ヶ月
+          <span>{data?.ritsun_time?.unjun_type === 0 ? "逆行運" : "順行運"}</span>
         </div>
-        {renderFlowBoard("daiun", "大運", "歳", "大運", alignedDaiunItems, "pd-flow-board-first")}
-      </section>
-      {renderFlowBoard("year", "流年", "年", "流年", alignedYearItems)}
-      {renderFlowBoard("month", "流月", "節", "流月", alignedMonthItems)}
-      {renderFlowBoard("day", "流日", "日", "流日", alignedDayItems)}
-
-      <div className="pd-flow-footnote">
-        {currentDaiun ? `現在大運: ${currentDaiun.kanshi} / ${currentDaiun.start_year ?? "-"}年開始` : null}
-        {selectedYearInfo ? ` / 選択流年: ${selectedYearInfo.year}年` : null}
-        {selection?.flowMonth ? ` / 選択流月: ${selection.flowMonth.term} (${formatDate(selection.flowMonth.date)})` : null}
+        <label className="pd-compact-date">
+          選択日
+          <select aria-label="選択日" value={currentFlowDay?.date || ""}
+            disabled={!flowDays.length}
+            onChange={(event) => {
+              const index = flowDays.findIndex((item) => item.date === event.target.value);
+              if (index >= 0) selectDay(index);
+            }}>
+            {flowDays.map((item) => <option key={item.date} value={item.date}>{formatDate(item.date)}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={handleSelectToday}>今日</button>
+        <span role="status">{loadingSelection ? "読込中…" : ""}</span>
       </div>
-    </>
+      {selectionError && <div className="pd-compact-error" role="alert">
+        読み込めませんでした。選択は変更されていません。
+        <button type="button" onClick={() => loadSelection(selectionError)}>再試行</button>
+      </div>}
+      {renderFlowBoard("daiun", "大運", daiunItems)}
+      {renderFlowBoard("year", "流年", yearItems)}
+      {renderFlowBoard("month", "流月", monthItems)}
+      {renderFlowBoard("day", "流日", dayItems)}
+    </div>
   );
 }

@@ -6,7 +6,6 @@ export const CHAT_VIRTUOSO_BASE_INDEX = 100000;
 export function usePaginatedChatMessages({
   sessionId,
   enabled,
-  messageCount = 0,
   pageSize,
   loadPage,
 }) {
@@ -47,7 +46,7 @@ export function usePaginatedChatMessages({
     []
   );
 
-  const loadLatestPage = useCallback(() => {
+  const loadLatestPage = useCallback(({ reset = false } = {}) => {
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
     initialAbortRef.current?.abort();
@@ -58,37 +57,38 @@ export function usePaginatedChatMessages({
       return () => {};
     }
 
-    if (Number(messageCount) === 0) {
-      resetState({ ready: true });
-      return () => {};
-    }
-
     const controller = new AbortController();
     initialAbortRef.current = controller;
-    messagesRef.current = [];
-    setMessagesState([]);
-    setHasMore(false);
+    if (reset) {
+      messagesRef.current = [];
+      setMessagesState([]);
+      setHasMore(false);
+      setFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
+    }
     setLoadingOlder(false);
     setLoadingInitial(true);
-    setIsReady(false);
+    setIsReady(!reset && messagesRef.current.length > 0);
     setError(null);
-    setFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX);
 
     loadPage(sessionId, { limit: pageSize, signal: controller.signal })
       .then((page) => {
         if (requestId !== requestIdRef.current || controller.signal.aborted) return;
-        const merged = mergeMessagesById([], page.messages, { position: "replace" });
+        const localMessages = messagesRef.current.filter(
+          (message) => message?.status && message.status !== "complete"
+        );
+        const serverMessages = mergeMessagesById([], page.messages, { position: "replace" }).messages;
+        const merged = mergeMessagesById(serverMessages, localMessages, { position: "append" });
         messagesRef.current = merged.messages;
         setMessagesState(merged.messages);
         setHasMore(Boolean(page.hasMoreOlder));
-        setFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX - merged.messages.length);
+        setFirstItemIndex(CHAT_VIRTUOSO_BASE_INDEX - serverMessages.length);
       })
       .catch((errorValue) => {
         if (controller.signal.aborted || requestId !== requestIdRef.current) return;
         console.error(errorValue);
-        messagesRef.current = [];
-        setMessagesState([]);
-        setHasMore(false);
+        if (messagesRef.current.length === 0) {
+          setHasMore(false);
+        }
         setError("会話メッセージの読み込みに失敗しました。");
       })
       .finally(() => {
@@ -100,9 +100,9 @@ export function usePaginatedChatMessages({
     return () => {
       controller.abort();
     };
-  }, [enabled, loadPage, messageCount, pageSize, resetState, sessionId]);
+  }, [enabled, loadPage, pageSize, resetState, sessionId]);
 
-  useEffect(() => loadLatestPage(), [loadLatestPage]);
+  useEffect(() => loadLatestPage({ reset: true }), [loadLatestPage]);
 
   useEffect(
     () => () => {
@@ -175,6 +175,6 @@ export function usePaginatedChatMessages({
     setError,
     firstItemIndex,
     loadOlderMessages,
-    reload: loadLatestPage,
+    reload: () => loadLatestPage({ reset: messagesRef.current.length === 0 }),
   };
 }

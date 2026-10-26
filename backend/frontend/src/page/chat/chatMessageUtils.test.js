@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mergeMessagesById,
+  reconcileChatMessage,
   removeChatMessagesById,
   replaceChatMessageById,
 } from "./chatMessageUtils";
@@ -50,5 +51,29 @@ describe("chatMessageUtils", () => {
     const result = removeChatMessagesById(messages, [2, 999]);
 
     expect(result.map((message) => message.id)).toEqual([1, 3]);
+  });
+
+  it("reconciles a temporary message in place while preserving its UI key", () => {
+    const optimistic = buildMessage(null, {
+      uiKey: "client:assistant:1",
+      content: "streamed",
+      status: "streaming",
+      typing: true,
+    });
+
+    const result = reconcileChatMessage(
+      [optimistic],
+      optimistic.uiKey,
+      buildMessage(42, { content: "completed", status: "complete" })
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 42,
+      uiKey: "client:assistant:1",
+      content: "completed",
+      status: "complete",
+      typing: false,
+    });
   });
 });

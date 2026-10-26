@@ -96,4 +96,36 @@ describe("ChatMessageList", () => {
     expect(screen.getByText("message-8")).toBeTruthy();
     expect(screen.queryByText("message-20")).toBeNull();
   });
+
+  it("renders streaming content inside the existing assistant bubble", () => {
+    render(
+      <ChatMessageList
+        activeChatSession={{ id: 1, title: "session" }}
+        messages={[
+          buildMessage(null, {
+            uiKey: "client:assistant:1",
+            role: "assistant",
+            content: "逐次応答",
+            status: "streaming",
+            typing: true,
+          }),
+        ]}
+        loadingInitial={false}
+        loadingOlder={false}
+        hasMore={false}
+        historyError={null}
+        onRetryHistory={vi.fn()}
+        listRef={{ current: null }}
+        firstItemIndex={100}
+        onLoadOlder={vi.fn()}
+        onBottomStateChange={vi.fn()}
+        followOutput={vi.fn()}
+        showJumpToLatest={false}
+        onJumpToLatest={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("逐次応答")).toBeTruthy();
+    expect(screen.queryByText("回答を生成中...")).toBeNull();
+  });
 });

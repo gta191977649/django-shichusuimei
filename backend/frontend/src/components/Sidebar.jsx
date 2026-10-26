@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../api";
 import { buildProfilePayload, getProfileBirthTimeState } from "../lib/birthTime";
+import { getZodiacSign, ZodiacIcon } from "./ProfileList";
 
 const emptyForm = {
   id: null,
@@ -23,12 +24,16 @@ const toForm = (profile) => {
   };
 };
 
-const Sidebar = ({ isVisible, isMobile = false, onToggle, setSelectedProfile }) => {
+const Sidebar = ({ isVisible, isMobile = false, onToggle, profile, setSelectedProfile }) => {
   const [profiles, setProfiles] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
+
+  useEffect(() => {
+    setForm(profile ? toForm(profile) : emptyForm);
+  }, [profile]);
 
   const fetchProfileData = () => {
     setLoading(true);
@@ -86,7 +91,7 @@ const Sidebar = ({ isVisible, isMobile = false, onToggle, setSelectedProfile }) 
 
       setSelectedProfile(saved);
       setForm(toForm(saved));
-      await api.get("/api/meishiki/").then((res) => setProfiles(res.data));
+      await fetchProfileData();
     } catch (err) {
       console.error(err);
       setMessage("保存に失敗しました。");
@@ -106,7 +111,7 @@ const Sidebar = ({ isVisible, isMobile = false, onToggle, setSelectedProfile }) 
       await api.delete(`/api/meishiki/${form.id}/`);
       setSelectedProfile(false);
       resetForm();
-      await api.get("/api/meishiki/").then((res) => setProfiles(res.data));
+      await fetchProfileData();
     } catch (err) {
       console.error(err);
       setMessage("削除に失敗しました。");
@@ -205,20 +210,36 @@ const Sidebar = ({ isVisible, isMobile = false, onToggle, setSelectedProfile }) 
       <div className="profile-list-shell">
         <div className="profile-list">
           {loading && profiles.length === 0 ? <div>読込中...</div> : null}
-          {profiles.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`profile-list-item${form.id === item.id ? " profile-list-item-active" : ""}`}
-              onClick={() => selectProfile(item)}
-            >
-              <span>{item.name}</span>
-              <small>
-                {item.birthDate ? item.birthDate.slice(0, 10) : ""}
-                {item.birthTimeUnknown ? " / 時刻不明" : ""}
-              </small>
-            </button>
-          ))}
+          {profiles.map((item) => {
+            const isFemale = item.gender === "F";
+            const zodiac = getZodiacSign(item.birthDate);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`profile-list-item${form.id === item.id ? " profile-list-item-active" : ""}`}
+                onClick={() => selectProfile(item)}
+              >
+                <span className="profile-list-item-main">
+                  <span className="profile-list-item-name">{item.name}</span>
+                  <span
+                    className={`profile-list-item-gender ${isFemale ? "is-female" : "is-male"}`}
+                    aria-label={isFemale ? "女性" : "男性"}
+                  >
+                    {isFemale ? "♀" : "♂"}
+                  </span>
+                </span>
+                <span className="profile-list-item-details">
+                  <small>
+                    {item.birthDate ? item.birthDate.slice(0, 10) : ""}
+                  </small>
+                  <span className={`profile-list-item-zodiac is-${zodiac.element}`} title={zodiac.name} aria-label={zodiac.name}>
+                    <ZodiacIcon zodiac={zodiac} />
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

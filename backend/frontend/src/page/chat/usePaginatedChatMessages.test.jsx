@@ -105,4 +105,56 @@ describe("usePaginatedChatMessages", () => {
 
     await waitFor(() => expect(result.current.messages.map((message) => message.id)).toEqual([20]));
   });
+
+  it("does not reload history when the session message count changes", async () => {
+    const loadPage = vi.fn(async () => ({ messages: [buildMessage(1)], hasMoreOlder: false }));
+    const { rerender } = renderHook(
+      ({ messageCount }) =>
+        usePaginatedChatMessages({
+          sessionId: 10,
+          enabled: true,
+          messageCount,
+          pageSize: 40,
+          loadPage,
+        }),
+      { initialProps: { messageCount: 1 } }
+    );
+
+    await waitFor(() => expect(loadPage).toHaveBeenCalledTimes(1));
+    rerender({ messageCount: 2 });
+    await act(async () => Promise.resolve());
+
+    expect(loadPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps an optimistic message added while the initial history request is pending", async () => {
+    let resolvePage;
+    const loadPage = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolvePage = resolve;
+        })
+    );
+    const { result } = renderHook(() =>
+      usePaginatedChatMessages({ sessionId: 10, enabled: true, pageSize: 40, loadPage })
+    );
+
+    await waitFor(() => expect(loadPage).toHaveBeenCalledTimes(1));
+    act(() => {
+      result.current.setMessages([
+        buildMessage(null, {
+          uiKey: "client:user:1",
+          role: "user",
+          content: "optimistic",
+          status: "sending",
+        }),
+      ]);
+    });
+    act(() => {
+      resolvePage({ messages: [buildMessage(1)], hasMoreOlder: false });
+    });
+
+    await waitFor(() => expect(result.current.messages).toHaveLength(2));
+    expect(result.current.messages.map((message) => message.content)).toEqual(["message-1", "optimistic"]);
+  });
 });

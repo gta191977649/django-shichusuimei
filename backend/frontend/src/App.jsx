@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { BrowserRouter, NavLink, Route, Routes } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar";
 import api, { ACCESS_TOKEN, AUTH_CHANGED_EVENT, clearStoredAuthTokens } from "./api";
 import { clearLastActiveProfile, getLastActiveProfileId, setLastActiveProfile } from "./lib/adminChatStorage";
+import { installGlobalUiSounds } from "./lib/uiSounds";
 import Login from "./page/Login";
 import Debug from "./page/Debug";
 import NotFound from "./page/NotFound";
 import Calendar from "./page/Calendar";
 import PercisionDebug from "./page/PercisionDebug";
+import AIChatPage from "./page/AIChatPage";
+import DaiunLine from "./page/DaiunLine";
 import Suimei from "./page/Suimei";
 
 const HEADER_HEIGHT = "30px";
@@ -23,6 +26,13 @@ function App() {
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== "undefined" ? window.innerWidth <= MOBILE_BREAKPOINT : false
   );
+
+  useEffect(() => {
+    document.documentElement.classList.add("retro-theme");
+    return () => document.documentElement.classList.remove("retro-theme");
+  }, []);
+
+  useEffect(() => installGlobalUiSounds(), []);
 
   const fetchCurrentUser = async () => {
     try {
@@ -169,10 +179,26 @@ function App() {
             </li>
           ) : null}
           <li className="header-debug-item">
-            <Link to="/">{"\u300c\u901a\u5e38\u7248\u300d"}</Link>
+            <NavLink to="/" end className={({ isActive }) => (isActive ? "is-current" : undefined)}>
+              {"\u300c\u901a\u5e38\u7248\u300d"}
+            </NavLink>
           </li>
           <li className="header-debug-item">
-            <Link to="/v2">{"\u300c\u7cbe\u5bc6\u7248\u300d"}</Link>
+            <NavLink to="/v2" className={({ isActive }) => (isActive ? "is-current" : undefined)}>
+              {"\u300c\u7cbe\u5bc6\u7248\u300d"}
+            </NavLink>
+          </li>
+          {isAuthenticated && authUser?.is_admin ? (
+            <li className="header-debug-item">
+              <NavLink to="/ai-chat" className={({ isActive }) => (isActive ? "is-current" : undefined)}>
+                {"\u300cAI\u4f1a\u8a71\u300d"}
+              </NavLink>
+            </li>
+          ) : null}
+          <li className="header-debug-item">
+            <NavLink to="/daiun-line" className={({ isActive }) => (isActive ? "is-current" : undefined)}>
+              {"\u300c\u5927\u904b\u7dda\u300d"}
+            </NavLink>
           </li>
           {isAuthenticated ? (
             <li className="header-debug-item">
@@ -182,7 +208,9 @@ function App() {
             </li>
           ) : (
             <li className="header-debug-item">
-              <Link to="/login">{"\u300c\u30ed\u30b0\u30a4\u30f3\u300d"}</Link>
+              <NavLink to="/login" className={({ isActive }) => (isActive ? "is-current" : undefined)}>
+                {"\u300c\u30ed\u30b0\u30a4\u30f3\u300d"}
+              </NavLink>
             </li>
           )}
           <li className="header-debug-item">{"\u300c\u4f7f\u3044\u65b9?\u300d"}</li>
@@ -192,7 +220,14 @@ function App() {
         </ul>
       </div>
 
-      <div className="app-shell" style={{ marginTop: headerHeight, height: `calc(100dvh - ${headerHeight})` }}>
+      <div
+        className="app-shell"
+        style={{
+          marginTop: headerHeight,
+          height: `calc(100dvh - ${headerHeight})`,
+          "--app-header-height": headerHeight,
+        }}
+      >
         <div
           className={`app-sidebar-frame${sidebarVisible ? " is-visible" : ""}${isMobileViewport ? " is-mobile" : ""}`}
           style={{
@@ -206,6 +241,7 @@ function App() {
               isVisible={sidebarVisible}
               isMobile={isMobileViewport}
               onToggle={() => setSidebarVisible(false)}
+              profile={meishiki}
               setSelectedProfile={setSelectedProfile}
             />
           ) : null}
@@ -245,6 +281,19 @@ function App() {
                 />
               }
             />
+            <Route
+              path="/ai-chat"
+              element={
+                <AIChatPage
+                  profile={meishiki}
+                  setSelectedProfile={setSelectedProfile}
+                  isAuthenticated={isAuthenticated}
+                  isAdmin={Boolean(authUser?.is_admin)}
+                  authUserId={authUser?.id || null}
+                />
+              }
+            />
+            <Route path="/daiun-line" element={<DaiunLine profile={meishiki} />} />
             <Route path="/app" element={<Calendar />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

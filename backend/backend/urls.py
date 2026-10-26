@@ -1,7 +1,7 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.views.generic import TemplateView
-from suimei.views import BunsekiChatStreamView, BunsekiChatView, BunsekiStreamView, BunsekiView, ChatSessionDetailView, ChatSessionListCreateView, ChatSessionMessagesView, ChatSessionStreamView, CreateUserView, CurrentUserView, PrecisionFlowView, SuimeiView
+from suimei.views import BunsekiChatStreamView, BunsekiChatView, BunsekiStreamView, BunsekiView, ChatSessionDetailView, ChatSessionListCreateView, ChatSessionMessagesView, ChatSessionStreamView, CreateUserView, CurrentUserView, FiveElementEnergyView, PrecisionFlowView, SuimeiView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -32,6 +32,7 @@ urlpatterns = [
     # Application-specific API endpoints
     path("api/query", SuimeiView.as_view(), name="query"),
     path("api/precision-flow", PrecisionFlowView.as_view(), name="precision-flow"),
+    path("api/five-element-energy/", FiveElementEnergyView.as_view(), name="five-element-energy"),
     path("api/gpt", BunsekiView.as_view(), name="query"),
     path("api/gpt/stream", BunsekiStreamView.as_view(), name="bunseki-stream"),
     path("api/gpt/chat", BunsekiChatView.as_view(), name="bunseki-chat"),
@@ -42,5 +43,12 @@ urlpatterns = [
     path("api/gpt/chat/sessions/<int:session_id>/stream", ChatSessionStreamView.as_view(), name="chat-session-stream"),
 
     path('api/', include(router.urls)),
+
+    # React Router の各ページを、直接アクセス・ブラウザ更新時にも表示する
+    # Django の管理画面、API、静的ファイルはこのフォールバックから除外する。
+    re_path(
+        r"^(?!admin(?:/|$)|api(?:/|$)|api-auth(?:/|$)|assets(?:/|$)|media(?:/|$)).*$",
+        TemplateView.as_view(template_name='index.html'),
+    ),
 
 ]

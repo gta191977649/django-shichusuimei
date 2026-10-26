@@ -4,6 +4,7 @@ import App from './App.jsx'
 //import './mobile.css'
 
 import './index.css'
+import './retro-theme.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

@@ -1,0 +1,1674 @@
+@font-face {
+  font-family: "Fusion Pixel 12px";
+  src: url("./assets/fonts/fusion-pixel-12px-proportional-zh-hans.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 700;
+}
+
+:root.retro-theme {
+  --retro-page: #e8d5ad;
+  --retro-surface: #f6f1e7;
+  --retro-panel: #e5dfd5;
+  --retro-panel-deep: #d1c5b2;
+  --retro-title: #514f49;
+  --retro-text: #4e4c47;
+  --retro-muted: #9e9585;
+  --retro-border: #4b4a45;
+  --retro-border-soft: #b7ac98;
+  --retro-user: #b8cec3;
+  --retro-accent: #a85b43;
+  --retro-focus: #6f8f83;
+  --retro-shadow: #756c5e;
+  --retro-error: #8e3f35;
+  --retro-font: "Fusion Pixel 12px", "BIZ UDGothic", "Noto Sans SC", "Noto Sans JP", "Microsoft YaHei", sans-serif;
+  --pd-chat-font-family: var(--retro-font);
+  color: var(--retro-text);
+  background: var(--retro-page);
+  font-family: var(--retro-font);
+  font-synthesis: none;
+  -webkit-font-smoothing: none;
+  text-rendering: geometricPrecision;
+}
+
+.retro-theme *,
+.retro-theme *::before,
+.retro-theme *::after {
+  box-sizing: border-box;
+}
+
+.retro-theme body,
+.retro-theme #root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  color: var(--retro-text);
+  background-color: var(--retro-page);
+  background-image:
+    linear-gradient(45deg, rgba(117, 108, 94, 0.08) 25%, transparent 25%, transparent 75%, rgba(117, 108, 94, 0.08) 75%),
+    linear-gradient(45deg, rgba(117, 108, 94, 0.08) 25%, transparent 25%, transparent 75%, rgba(117, 108, 94, 0.08) 75%);
+  background-position: 0 0, 4px 4px;
+  background-size: 8px 8px;
+  font-family: var(--retro-font);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.retro-theme button,
+.retro-theme input,
+.retro-theme select,
+.retro-theme textarea,
+.retro-theme table,
+.retro-theme .modal,
+.retro-theme .tooltip,
+.retro-theme .pd-markdown {
+  font-family: var(--retro-font);
+}
+
+.retro-theme img,
+.retro-theme canvas {
+  image-rendering: pixelated;
+}
+
+.retro-theme a {
+  color: var(--retro-text);
+}
+
+.retro-theme :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px dashed var(--retro-accent);
+  outline-offset: 2px;
+}
+
+.retro-theme ::selection {
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+/* Global shell and toolbar */
+.retro-theme .header-debug {
+  border-bottom: 2px solid var(--retro-border);
+  padding: 0 4px;
+  color: var(--retro-text);
+  background: var(--retro-panel);
+  box-shadow: 0 2px 0 var(--retro-border-soft);
+}
+
+.retro-theme .header-debug-list {
+  gap: 2px;
+}
+
+.retro-theme .header-debug li {
+  padding: 0;
+}
+
+.retro-theme .header-debug a,
+.retro-theme .header-debug-link {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  border: 1px solid transparent;
+  padding: 1px 6px;
+  color: var(--retro-text);
+  line-height: 20px;
+}
+
+.retro-theme .header-debug a:hover,
+.retro-theme .header-debug-link:hover {
+  border-color: var(--retro-border);
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .header-debug a.is-current {
+  border-color: var(--retro-border);
+  color: var(--retro-surface);
+  background: var(--retro-title);
+  box-shadow: inset 0 -2px 0 var(--retro-accent);
+}
+
+.retro-theme .header-debug a:active,
+.retro-theme .header-debug-link:active,
+.retro-theme button:active:not(:disabled) {
+  translate: 1px 1px;
+  box-shadow: none !important;
+}
+
+.retro-theme .header-debug-note {
+  color: var(--retro-accent);
+}
+
+.retro-theme .app-shell,
+.retro-theme .app-main {
+  background: transparent;
+}
+
+.retro-theme .app-sidebar-frame {
+  border-right: 2px solid var(--retro-border);
+  background: var(--retro-panel);
+  box-shadow: 4px 0 0 rgba(75, 74, 69, 0.28);
+}
+
+/* Common retro controls and surfaces */
+.retro-theme :where(
+  .card,
+  .pd-panel,
+  .pd-title-row,
+  .pd-grid-panel,
+  .pd-flow-board,
+  .pd-flow-footnote,
+  .daiun-line-natal,
+  .daiun-line-diagnostics,
+  .login-card,
+  .profile-editor,
+  .profile-list-shell
+) {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: 4px 4px 0 var(--retro-shadow);
+}
+
+.retro-theme :where(
+  button,
+  input,
+  select,
+  textarea,
+  .btn,
+  .pd-action-button,
+  .login-button,
+  .login-switch,
+  .profile-editor-toggle,
+  .profile-sidebar-close
+) {
+  border-radius: 0;
+}
+
+.retro-theme :where(
+  button,
+  .btn,
+  .pd-action-button,
+  .login-button,
+  .login-switch,
+  .profile-editor-toggle,
+  .profile-sidebar-close,
+  .profile-actions button,
+  .daiun-line-mode button
+) {
+  border: 2px solid var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-panel);
+  background-image: none;
+  box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 var(--retro-border-soft), 2px 2px 0 var(--retro-shadow);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.retro-theme :where(
+  button,
+  .btn,
+  .pd-action-button,
+  .login-button,
+  .login-switch,
+  .profile-editor-toggle,
+  .profile-sidebar-close,
+  .profile-actions button,
+  .daiun-line-mode button
+):hover:not(:disabled) {
+  color: var(--retro-surface);
+  background: var(--retro-title);
+  background-image: none;
+}
+
+.retro-theme :where(button, .btn, .pd-action-button):disabled {
+  color: var(--retro-muted);
+  background: var(--retro-panel);
+  box-shadow: inset 1px 1px 0 #fff;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.retro-theme :where(input, select, textarea, .form-control, .profile-input, .pd-control-wrap) {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: inset 2px 2px 0 var(--retro-border-soft), inset -1px -1px 0 #fff;
+  caret-color: var(--retro-accent);
+}
+
+.retro-theme :where(input, textarea)::placeholder {
+  color: var(--retro-muted);
+  opacity: 1;
+}
+
+.retro-theme .require,
+.retro-theme .pd-control-wrap-required {
+  border-color: var(--retro-accent);
+  background: #f1dfb0;
+}
+
+.retro-theme .text-required,
+.retro-theme .login-message,
+.retro-theme .pd-chat-message-error,
+.retro-theme .daiun-line-error {
+  color: var(--retro-error);
+}
+
+/* Tables, tabs and content */
+.retro-theme table,
+.retro-theme th,
+.retro-theme td {
+  border-color: var(--retro-border);
+}
+
+.retro-theme table {
+  color: var(--retro-text);
+  background: var(--retro-surface);
+}
+
+.retro-theme th {
+  color: var(--retro-text);
+  background: var(--retro-panel-deep);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 var(--retro-border-soft);
+}
+
+.retro-theme :where(.nav-tabs, .pd-tabs-nav) {
+  border-bottom: 2px solid var(--retro-border);
+}
+
+.retro-theme :where(.nav-tabs .nav-link, .meishiki-tab .nav-link) {
+  margin: 0 2px -2px 0;
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-panel);
+}
+
+.retro-theme :where(.nav-tabs .nav-link.active, .meishiki-tab .nav-link.active) {
+  color: var(--retro-surface);
+  background: var(--retro-title);
+  background-image: none;
+}
+
+.retro-theme .pd-tab-shell,
+.retro-theme .card-body {
+  color: var(--retro-text);
+  background: var(--retro-surface);
+}
+
+.retro-theme :where(.kaisei-opti-regular, .kaisei-opti-medium, .kaisei-opti-bold, .text-element, .table-input) {
+  font-family: var(--retro-font);
+}
+
+.retro-theme :where(.pd-panel-head, .pd-grid-head, .card-header, .modal-header) {
+  border-bottom: 2px solid var(--retro-border);
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .pd-counter,
+.retro-theme .pd-action-button.is-active,
+.retro-theme .daiun-line-mode button.is-active,
+.retro-theme .profile-list-item-active,
+.retro-theme .profile-choice-item.is-active {
+  color: var(--retro-text);
+  background: var(--retro-user);
+  background-image: none;
+}
+
+.retro-theme :where(.pd-empty-state, .pd-ai-status, .daiun-line-status) {
+  border: 2px dashed var(--retro-border-soft);
+  color: var(--retro-muted);
+  background: var(--retro-panel);
+}
+
+.retro-theme .pd-ai-progress-track {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  background: var(--retro-surface);
+}
+
+.retro-theme .pd-ai-progress-bar {
+  border-radius: 0;
+  background-color: var(--retro-accent);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(246, 241, 231, 0.55) 6px 10px);
+}
+
+.retro-theme .pd-spinner {
+  border-radius: 0;
+  border-color: var(--retro-border-soft);
+  border-top-color: var(--retro-accent);
+}
+
+/* Profiles and file sidebar */
+.retro-theme .profile-sidebar {
+  color: var(--retro-text);
+  background: var(--retro-panel);
+}
+
+.retro-theme .profile-sidebar-head {
+  margin: -12px -12px 10px;
+  border-bottom: 2px solid var(--retro-border);
+  padding: 8px 12px;
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .profile-sidebar-title {
+  letter-spacing: 1px;
+}
+
+.retro-theme .profile-list,
+.retro-theme .profile-choice-list {
+  gap: 6px;
+}
+
+.retro-theme .profile-list-item,
+.retro-theme .profile-choice-item,
+.retro-theme .pd-chat-session-item {
+  border: 2px solid var(--retro-border-soft);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: 2px 2px 0 var(--retro-shadow);
+}
+
+.retro-theme :where(.profile-list-item, .profile-choice-item, .pd-chat-session-item):hover,
+.retro-theme :where(.profile-list-item-active, .profile-choice-item.is-active, .pd-chat-session-item-active) {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-user);
+  background-image: none;
+}
+
+.retro-theme .profile-choice-zodiac,
+.retro-theme .profile-list-item-zodiac,
+.retro-theme .pd-chat-profile-avatar {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-panel-deep);
+  box-shadow: 2px 2px 0 var(--retro-shadow);
+}
+
+.retro-theme :where(.profile-choice-date, .profile-choice-time, .profile-list-item-details, .pd-chat-session-meta, .pd-chat-session-preview) {
+  color: var(--retro-muted);
+}
+
+/* Login, calendar, charts and secondary routes */
+.retro-theme .login-page {
+  color: var(--retro-text);
+  background: transparent;
+}
+
+.retro-theme .login-card {
+  padding: 20px;
+}
+
+.retro-theme .login-title,
+.retro-theme .daiun-line-page h1,
+.retro-theme .daiun-line-page h2 {
+  color: var(--retro-text);
+  letter-spacing: 1px;
+}
+
+.retro-theme :where(.debug-container, .daiun-line-page, .calendar-container, .app.max-w-4xl) {
+  color: var(--retro-text);
+}
+
+.retro-theme .daiun-line-natal,
+.retro-theme .daiun-line-diagnostics,
+.retro-theme .daiun-line-status,
+.retro-theme .daiun-line-error {
+  border-color: var(--retro-border);
+  background: var(--retro-surface);
+}
+
+.retro-theme .entropy-scale {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-panel);
+}
+
+.retro-theme .entropy-scale-uncertain {
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .entropy-scale-certain {
+  color: var(--retro-text);
+  background: var(--retro-panel);
+}
+
+.retro-theme canvas {
+  border: 2px solid var(--retro-border);
+  background: var(--retro-surface);
+  box-shadow: 3px 3px 0 var(--retro-shadow);
+}
+
+/* Modals */
+.retro-theme .modal-backdrop {
+  background-color: var(--retro-title);
+  opacity: 0.55 !important;
+}
+
+.retro-theme .modal-content,
+.retro-theme .pd-profile-picker-modal .modal-content,
+.retro-theme .pd-element-insight-modal .modal-content {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: 6px 6px 0 var(--retro-shadow);
+}
+
+.retro-theme .modal-title {
+  font-size: 18px;
+}
+
+.retro-theme .modal-header .btn-close {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  background-color: var(--retro-panel);
+  opacity: 1;
+}
+
+.retro-theme .modal-body,
+.retro-theme .modal-footer {
+  color: var(--retro-text);
+  background: var(--retro-surface);
+}
+
+/* Chat: reference-inspired split panes and bubbles */
+.retro-theme .pd-chat-session-panel,
+.retro-theme .pd-chat-fullscreen-shell,
+.retro-theme .pd-chat-fullscreen-main,
+.retro-theme .pd-chat-fullscreen-sidebar,
+.retro-theme .pd-chat-standalone-page,
+.retro-theme .pd-chat-fullscreen-modal .modal-content {
+  border-radius: 0;
+  color: var(--retro-text);
+}
+
+.retro-theme .pd-chat-fullscreen-shell {
+  border: 2px solid var(--retro-border);
+  background: var(--retro-surface);
+  box-shadow: 4px 4px 0 var(--retro-shadow);
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar {
+  border-right: 2px solid var(--retro-border);
+  background: var(--retro-panel);
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head,
+.retro-theme .pd-chat-fullscreen-main-head {
+  border-bottom: 2px solid var(--retro-border);
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .pd-chat-fullscreen-main-title,
+.retro-theme .pd-chat-fullscreen-main-caption,
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-session-label,
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-session-caption {
+  color: inherit;
+}
+
+.retro-theme .pd-chat-fullscreen-main-body,
+.retro-theme .pd-chat-list,
+.retro-theme .pd-chat-list-fullscreen,
+.retro-theme .pd-chat-list-virtuoso {
+  background-color: var(--retro-surface);
+  background-image: linear-gradient(rgba(183, 172, 152, 0.16) 1px, transparent 1px);
+  background-size: 100% 24px;
+}
+
+.retro-theme .pd-chat-message {
+  align-items: flex-start;
+}
+
+.retro-theme .pd-chat-role {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-panel-deep);
+  box-shadow: 2px 2px 0 var(--retro-shadow);
+  image-rendering: pixelated;
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-role {
+  background: var(--retro-user);
+}
+
+.retro-theme .pd-chat-bubble,
+.retro-theme .pd-chat-message-user .pd-chat-bubble {
+  position: relative;
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-panel);
+  box-shadow: 3px 3px 0 var(--retro-shadow);
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble {
+  background: var(--retro-user);
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble::before,
+.retro-theme .pd-chat-message-user .pd-chat-bubble::after,
+.retro-theme .pd-chat-message-assistant .pd-chat-bubble::before,
+.retro-theme .pd-chat-message-assistant .pd-chat-bubble::after {
+  border: 0;
+  width: 8px;
+  height: 8px;
+  clip-path: none;
+  transform: none;
+}
+
+.retro-theme .pd-chat-message-assistant .pd-chat-bubble::before {
+  left: -8px;
+  top: 10px;
+  background: var(--retro-border);
+  box-shadow: 4px 4px 0 var(--retro-panel);
+}
+
+.retro-theme .pd-chat-message-assistant .pd-chat-bubble::after {
+  display: none;
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble::before {
+  right: -8px;
+  left: auto;
+  top: 10px;
+  background: var(--retro-border);
+  box-shadow: -4px 4px 0 var(--retro-user);
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble::after {
+  display: none;
+}
+
+.retro-theme .pd-chat-form,
+.retro-theme .pd-chat-form-fullscreen {
+  border-top: 2px solid var(--retro-border);
+  background: var(--retro-panel);
+}
+
+.retro-theme .pd-chat-input {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: inset 2px 2px 0 var(--retro-border-soft);
+}
+
+.retro-theme .pd-chat-send,
+.retro-theme .pd-chat-retry-button,
+.retro-theme .pd-chat-jump-latest,
+.retro-theme .pd-chat-sidebar-collapse,
+.retro-theme .pd-chat-sidebar-close,
+.retro-theme .pd-chat-sidebar-toggle,
+.retro-theme .pd-chat-sidebar-create,
+.retro-theme .pd-chat-profile-button {
+  border: 2px solid var(--retro-border);
+  border-radius: 0;
+  color: var(--retro-text);
+  background: var(--retro-panel);
+  box-shadow: 2px 2px 0 var(--retro-shadow);
+}
+
+.retro-theme :where(.pd-chat-send, .pd-chat-retry-button, .pd-chat-jump-latest, .pd-chat-sidebar-create):hover:not(:disabled) {
+  color: var(--retro-surface);
+  background: var(--retro-title);
+}
+
+.retro-theme .pd-chat-reasoning,
+.retro-theme .pd-markdown pre,
+.retro-theme .pd-markdown code,
+.retro-theme .pd-markdown blockquote {
+  border-radius: 0;
+  color: var(--retro-text);
+  background: #ddd4c7;
+}
+
+.retro-theme .pd-markdown blockquote {
+  border-left-color: var(--retro-accent);
+}
+
+.retro-theme .pd-chat-cursor {
+  border-radius: 0;
+  background: var(--retro-accent);
+}
+
+.retro-theme .pd-chat-sidebar-divider {
+  border-color: var(--retro-border-soft);
+  opacity: 1;
+}
+
+.retro-theme .pd-chat-access-denied {
+  border: 2px solid var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  box-shadow: 4px 4px 0 var(--retro-shadow);
+}
+
+/* Pixel scrollbars */
+html.retro-theme,
+html.retro-theme * {
+  scrollbar-width: auto;
+  scrollbar-color: var(--retro-border-soft) var(--retro-panel);
+}
+
+html.retro-theme::-webkit-scrollbar,
+html.retro-theme *::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+html.retro-theme::-webkit-scrollbar-track,
+html.retro-theme *::-webkit-scrollbar-track {
+  border: 1px solid var(--retro-border);
+  background: var(--retro-panel);
+}
+
+html.retro-theme::-webkit-scrollbar-thumb,
+html.retro-theme *::-webkit-scrollbar-thumb {
+  border: 2px solid var(--retro-panel);
+  border-radius: 0;
+  background: var(--retro-border-soft);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 var(--retro-border);
+}
+
+@media (max-width: 960px) {
+  .retro-theme body,
+  .retro-theme #root {
+    font-size: 16px;
+  }
+
+  .retro-theme .header-debug a,
+  .retro-theme .header-debug-link {
+    min-height: 26px;
+    padding-inline: 8px;
+  }
+
+  .retro-theme .app-sidebar-frame.is-mobile {
+    box-shadow: none;
+  }
+
+  .retro-theme .pd-chat-fullscreen-shell {
+    border-right: 0;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .retro-theme .pd-chat-fullscreen-sidebar {
+    border-right: 2px solid var(--retro-border);
+    box-shadow: 4px 0 0 var(--retro-shadow);
+  }
+}
+
+/* Gray-black checker hierarchy for headers and label columns. */
+:root.retro-theme {
+  --retro-grid-base: #5b5a55;
+  --retro-grid-soft-base: #dfdcd4;
+  --retro-grid-tile: rgba(255, 255, 255, 0.07);
+  --retro-grid-tile-soft: rgba(75, 74, 69, 0.07);
+  --retro-grid-gradient: linear-gradient(180deg, #686762 0%, #5b5a55 48%, #4d4c48 100%);
+  --retro-grid-gradient-soft: linear-gradient(180deg, #e8e5de 0%, #dfdcd4 52%, #d3d0c8 100%);
+  --retro-grid-pattern:
+    linear-gradient(45deg, var(--retro-grid-tile) 25%, transparent 25%, transparent 75%, var(--retro-grid-tile) 75%),
+    linear-gradient(45deg, var(--retro-grid-tile) 25%, transparent 25%, transparent 75%, var(--retro-grid-tile) 75%);
+  --retro-grid-pattern-soft:
+    linear-gradient(45deg, var(--retro-grid-tile-soft) 25%, transparent 25%, transparent 75%, var(--retro-grid-tile-soft) 75%),
+    linear-gradient(45deg, var(--retro-grid-tile-soft) 25%, transparent 25%, transparent 75%, var(--retro-grid-tile-soft) 75%);
+}
+
+.retro-theme :where(
+  .pd-panel-head,
+  .pd-grid-head,
+  .pd-flow-cluster .pd-grid-head,
+  .card-header,
+  .modal-header,
+  .pd-chat-fullscreen-main-head,
+  .pd-chat-fullscreen-sidebar-head
+) {
+  border-color: var(--retro-border-soft);
+  color: var(--retro-surface);
+  background-color: var(--retro-grid-base);
+  background-image: var(--retro-grid-pattern), var(--retro-grid-gradient);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, 100% 100%;
+  box-shadow: none;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head :where(
+  .pd-chat-sidebar-collapse,
+  .pd-chat-sidebar-close
+) {
+  border-color: #2f2f2c;
+  color: #353430;
+  background: var(--retro-surface);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #b9b3a7;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head :where(
+  .pd-chat-sidebar-collapse,
+  .pd-chat-sidebar-close
+):hover:not(:disabled) {
+  border-color: #171715;
+  color: #171715;
+  background: #fffdf8;
+}
+
+.retro-theme .pd-panel-head {
+  border-bottom: 1px solid var(--retro-border);
+}
+
+.retro-theme .pd-panel-title,
+.retro-theme .pd-grid-title,
+.retro-theme .card-header,
+.retro-theme .modal-title {
+  color: var(--retro-surface);
+  text-shadow: 1px 1px 0 rgba(24, 24, 22, 0.55);
+}
+
+.retro-theme .pd-panel-caption {
+  color: #ddd8cc;
+}
+
+.retro-theme :where(th, .pd-overview-head, .pd-flow-column-top) {
+  border-color: var(--retro-border);
+  color: var(--retro-surface);
+  background-color: var(--retro-grid-base);
+  background-image: var(--retro-grid-pattern), var(--retro-grid-gradient);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, 100% 100%;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.retro-theme :where(
+  .pd-overview-side,
+  .pd-overview-relation-side,
+  .pd-overview-relation-collapsed,
+  .pd-flow-board-side-top,
+  .pd-flow-board-side-main
+) {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background-color: var(--retro-grid-soft-base);
+  background-image: var(--retro-grid-pattern-soft), var(--retro-grid-gradient-soft);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, 100% 100%;
+}
+
+.retro-theme table:not(.table-gouka) > tbody > tr > td:first-child {
+  color: var(--retro-text);
+  background-color: var(--retro-grid-soft-base);
+  background-image: var(--retro-grid-pattern-soft), var(--retro-grid-gradient-soft);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, 100% 100%;
+}
+
+.retro-theme :where(td, .pd-overview-cell, .pd-flow-column) {
+  border-color: var(--retro-border);
+}
+
+.retro-theme :where(.pd-overview-main, .pd-overview-star, .pd-overview-zoukan, .pd-flow-column-bottom) {
+  color: var(--retro-text);
+  background-color: var(--retro-chat-bg);
+  background-image: none;
+}
+
+.retro-theme .pd-flow-column:hover {
+  background-color: #f5eedf;
+  background-image: var(--retro-grid-pattern-soft);
+}
+
+.retro-theme .pd-flow-column.is-active {
+  background-color: var(--retro-chat-active);
+  background-image: none;
+  box-shadow: inset 0 0 0 1px var(--retro-chat-border);
+}
+
+.retro-theme th {
+  font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(24, 24, 22, 0.55);
+}
+
+.retro-theme :where(
+  .pd-overview-relation-collapsed .pd-relation-toggle,
+  .pd-flow-board-side-top,
+  .pd-flow-board-side-main
+) {
+  font-weight: 700;
+  text-shadow: none;
+}
+
+/* Selected and semantic states must win over decorative texture. */
+.retro-theme :where(
+  .nav-tabs .nav-link.active,
+  .meishiki-tab .nav-link.active,
+  .pd-action-button.is-active,
+  .profile-list-item-active,
+  .profile-choice-item.is-active,
+  .pd-chat-session-item-active
+) {
+  background-image: none;
+  text-shadow: none;
+}
+
+/* Long-image/PDF capture remains clean and predictable. */
+.retro-theme .pd-export-sheet :where(
+  .pd-panel-head,
+  th,
+  td,
+  .pd-export-meishiki-label,
+  .pd-export-meishiki-row
+) {
+  background-image: none;
+  text-shadow: none;
+}
+
+@media print {
+  .retro-theme :where(
+    .pd-panel-head,
+    .pd-grid-head,
+    th,
+    td,
+    .pd-overview-cell,
+    .pd-flow-column-top,
+    .pd-flow-board-side-top,
+    .pd-flow-board-side-main
+  ) {
+    background-image: none !important;
+    text-shadow: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .retro-theme *,
+  .retro-theme *::before,
+  .retro-theme *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .retro-theme .pd-chat-cursor,
+  .retro-theme .pd-spinner {
+    animation: none !important;
+  }
+}
+
+@media print {
+  .retro-theme body,
+  .retro-theme #root,
+  .retro-theme .pd-export-stage,
+  .retro-theme .pd-export-sheet {
+    color: #000;
+    background: #fff;
+    background-image: none;
+  }
+
+  .retro-theme .pd-export-sheet,
+  .retro-theme .pd-export-sheet * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
+
+/* Flat, brighter refinement: keep pixel structure without raised chrome. */
+:root.retro-theme {
+  --retro-chat-bg: #f3ecd8;
+  --retro-chat-assistant: #ffffff;
+  --retro-chat-user: #d9eae2;
+  --retro-chat-panel: #f2eee4;
+  --retro-chat-title: #e7ddc8;
+  --retro-chat-text: #4f4c45;
+  --retro-chat-muted: #8b8578;
+  --retro-chat-border: #6a665d;
+  --retro-chat-active: #e2ebdd;
+}
+
+/* Navigation is a flat toolbar, not a row of raised buttons. */
+.retro-theme .header-debug {
+  border-bottom-width: 1px;
+  box-shadow: none;
+}
+
+.retro-theme .header-debug a,
+.retro-theme .header-debug-link {
+  min-height: 26px;
+  border-width: 0 1px 0 0;
+  border-color: var(--retro-border-soft);
+  padding: 1px 8px;
+  background: transparent;
+  box-shadow: none;
+  translate: none;
+}
+
+.retro-theme .header-debug a:hover,
+.retro-theme .header-debug-link:hover {
+  border-color: var(--retro-border-soft);
+  color: var(--retro-text);
+  background: #d8d0c3;
+  box-shadow: none;
+}
+
+.retro-theme .header-debug a.is-current {
+  border-color: var(--retro-border-soft);
+  color: var(--retro-text);
+  background: var(--retro-chat-title);
+  box-shadow: inset 0 -2px 0 var(--retro-accent);
+}
+
+.retro-theme .header-debug a:active,
+.retro-theme .header-debug-link:active {
+  color: var(--retro-text);
+  background: #cec5b7;
+  box-shadow: inset 0 -2px 0 var(--retro-accent) !important;
+  translate: none;
+}
+
+/* Ordinary controls and surfaces stay flat. */
+.retro-theme :where(
+  button,
+  .btn,
+  .pd-action-button,
+  .login-button,
+  .login-switch,
+  .profile-editor-toggle,
+  .profile-sidebar-close,
+  .profile-actions button,
+  .daiun-line-mode button,
+  .card,
+  .pd-panel,
+  .pd-title-row,
+  .pd-grid-panel,
+  .pd-flow-board,
+  .pd-flow-footnote,
+  .daiun-line-natal,
+  .daiun-line-diagnostics,
+  .login-card,
+  .profile-editor,
+  .profile-list-shell,
+  .profile-list-item,
+  .profile-choice-item,
+  .pd-chat-session-item,
+  .profile-choice-zodiac,
+  .profile-list-item-zodiac,
+  .pd-chat-profile-avatar,
+  .modal-content,
+  .pd-profile-picker-modal .modal-content,
+  .pd-element-insight-modal .modal-content,
+  canvas
+) {
+  box-shadow: none;
+}
+
+.retro-theme button:active:not(:disabled) {
+  translate: none;
+}
+
+/* Only primary chat actions retain a restrained inset press state. */
+.retro-theme .pd-chat-send,
+.retro-theme .pd-chat-sidebar-create {
+  border: 1px solid var(--retro-chat-border);
+  background: var(--retro-chat-title);
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #b9ad99;
+}
+
+.retro-theme .pd-chat-send:hover:not(:disabled),
+.retro-theme .pd-chat-sidebar-create:hover:not(:disabled) {
+  color: var(--retro-chat-text);
+  background: #ded2ba;
+}
+
+.retro-theme .pd-chat-send:active:not(:disabled),
+.retro-theme .pd-chat-sidebar-create:active:not(:disabled) {
+  box-shadow: inset 1px 1px 0 #b9ad99 !important;
+}
+
+/* Brighter, denser chat workspace. */
+.retro-theme .pd-chat-fullscreen-shell,
+.retro-theme .pd-chat-fullscreen-main,
+.retro-theme .pd-chat-standalone-page,
+.retro-theme .pd-chat-fullscreen-modal .modal-content {
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-bg);
+}
+
+.retro-theme .pd-chat-fullscreen-shell {
+  border: 1px solid var(--retro-chat-border);
+  box-shadow: none;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar {
+  border-right: 1px solid var(--retro-chat-border);
+  padding: 14px;
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-panel);
+  box-shadow: none;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head {
+  min-height: 38px;
+  margin: -14px -14px 0;
+  padding: 7px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-title);
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-session-label,
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-session-caption {
+  color: inherit;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-session-caption {
+  margin-top: 0;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.retro-theme .pd-chat-sidebar-actions {
+  gap: 4px;
+}
+
+.retro-theme .pd-chat-sidebar-collapse,
+.retro-theme .pd-chat-sidebar-close,
+.retro-theme .pd-chat-sidebar-toggle,
+.retro-theme .pd-chat-profile-button,
+.retro-theme .pd-chat-session-delete,
+.retro-theme .pd-chat-retry-button,
+.retro-theme .pd-chat-jump-latest {
+  border: 1px solid var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background: transparent;
+  box-shadow: none;
+}
+
+.retro-theme .pd-chat-sidebar-create {
+  margin-top: 10px;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-body {
+  margin-top: 10px;
+}
+
+.retro-theme .pd-chat-session-item {
+  border: 1px solid #b9b0a1;
+  color: var(--retro-chat-text);
+  background: #faf7f0;
+}
+
+.retro-theme .pd-chat-session-item:hover,
+.retro-theme .pd-chat-session-item-active {
+  border-color: var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-active);
+}
+
+.retro-theme .pd-chat-session-meta,
+.retro-theme .pd-chat-session-preview,
+.retro-theme .pd-chat-profile-caption {
+  color: var(--retro-chat-muted);
+}
+
+.retro-theme .pd-chat-sidebar-divider {
+  margin: 10px 0;
+  border-color: #c2b8a8;
+}
+
+.retro-theme .pd-chat-profile-button {
+  padding: 8px;
+  background: #faf7f0;
+}
+
+.retro-theme .pd-chat-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-active);
+}
+
+.retro-theme .pd-chat-fullscreen-main-head {
+  flex: 0 0 40px;
+  min-height: 40px;
+  max-height: 40px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-title);
+}
+
+.retro-theme .pd-chat-fullscreen-main-info {
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.retro-theme .pd-chat-fullscreen-main-info > div:last-child {
+  min-width: 0;
+}
+
+.retro-theme .pd-chat-fullscreen-main-title {
+  overflow: hidden;
+  font-size: 16px;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retro-theme .pd-chat-fullscreen-main-head > .pd-action-button {
+  flex: 0 0 auto;
+  min-width: auto;
+  height: 30px;
+  border-width: 1px;
+  padding: 3px 10px;
+  box-shadow: none;
+}
+
+.retro-theme .pd-chat-fullscreen-main-caption {
+  display: none;
+}
+
+.retro-theme .pd-chat-fullscreen-main-body,
+.retro-theme .pd-chat-list,
+.retro-theme .pd-chat-list-fullscreen,
+.retro-theme .pd-chat-list-virtuoso {
+  background-color: var(--retro-chat-bg);
+  background-image: linear-gradient(rgba(106, 102, 93, 0.08) 1px, transparent 1px);
+  background-size: 100% 24px;
+}
+
+.retro-theme .pd-chat-fullscreen-main-body {
+  padding: 0 8px;
+}
+
+.retro-theme .pd-chat-list-fullscreen {
+  padding: 14px clamp(24px, 4vw, 64px) 10px;
+}
+
+.retro-theme .pd-chat-list-fullscreen.pd-chat-list-virtuoso {
+  padding: 0;
+}
+
+.retro-theme .pd-chat-list-fullscreen .pd-chat-row {
+  padding-right: clamp(24px, 4vw, 64px);
+  padding-bottom: 6px;
+  padding-left: clamp(24px, 4vw, 64px);
+}
+
+.retro-theme .pd-chat-list-fullscreen .pd-chat-row:first-child {
+  padding-top: 12px;
+}
+
+.retro-theme .pd-chat-fullscreen-main .pd-chat-message {
+  gap: 8px;
+}
+
+.retro-theme .pd-chat-fullscreen-main .pd-chat-role,
+.retro-theme .pd-chat-role {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--retro-chat-border);
+  padding: 0;
+  color: var(--retro-chat-text);
+  background: #ebe4d6;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-role {
+  background: var(--retro-chat-user);
+}
+
+.retro-theme .pd-chat-bubble,
+.retro-theme .pd-chat-fullscreen-main .pd-chat-bubble {
+  border: 1px solid var(--retro-chat-border);
+  padding: 7px 10px;
+  color: var(--retro-chat-text);
+  background: var(--retro-chat-assistant);
+  box-shadow: none;
+  line-height: 1.45;
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble,
+.retro-theme .pd-chat-fullscreen-main .pd-chat-message-user .pd-chat-bubble {
+  background: var(--retro-chat-user);
+}
+
+.retro-theme .pd-chat-message-assistant .pd-chat-bubble::before {
+  left: -6px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  background: var(--retro-chat-border);
+  box-shadow: 3px 3px 0 var(--retro-chat-assistant);
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble::before {
+  right: -6px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
+  background: var(--retro-chat-border);
+  box-shadow: -3px 3px 0 var(--retro-chat-user);
+}
+
+.retro-theme .pd-chat-form,
+.retro-theme .pd-chat-form-fullscreen {
+  border-top: 1px solid var(--retro-chat-border);
+  background: var(--retro-chat-panel);
+}
+
+.retro-theme .pd-chat-form-fullscreen {
+  grid-template-columns: minmax(0, 1fr) 72px;
+  gap: 8px;
+  padding: 7px clamp(24px, 4vw, 64px) 10px;
+  background: linear-gradient(to bottom, rgba(240, 235, 225, 0.4), rgba(250, 247, 240, 0.96) 38%);
+}
+
+.retro-theme .pd-chat-form-fullscreen .pd-chat-input {
+  height: 46px;
+  min-height: 46px;
+  max-height: 30dvh;
+  resize: none;
+  border-radius: 0;
+  box-shadow: 0 2px 0 rgba(67, 61, 51, 0.12), inset 1px 1px 0 #d8d0c3;
+}
+
+.retro-theme .pd-chat-input {
+  border: 1px solid var(--retro-chat-border);
+  padding: 8px 10px;
+  color: var(--retro-chat-text);
+  background: #fffdf8;
+  box-shadow: inset 1px 1px 0 #d8d0c3;
+}
+
+.retro-theme .pd-chat-input::placeholder {
+  color: var(--retro-chat-muted);
+}
+
+.retro-theme .pd-chat-send {
+  min-width: 96px;
+}
+
+.retro-theme .pd-chat-form-fullscreen .pd-chat-send {
+  width: 72px;
+  min-width: 72px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 0;
+}
+
+.retro-theme .pd-chat-reasoning,
+.retro-theme .pd-markdown pre,
+.retro-theme .pd-markdown code,
+.retro-theme .pd-markdown blockquote {
+  color: var(--retro-chat-text);
+  background: #eee9df;
+}
+
+@media (max-width: 960px) {
+  .retro-theme .pd-chat-fullscreen-main-head {
+    flex-basis: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding: 5px 8px;
+  }
+
+  .retro-theme .pd-chat-fullscreen-main-title {
+    font-size: 14px;
+    line-height: 32px;
+  }
+
+  .retro-theme .pd-chat-fullscreen-main-body {
+    padding: 0 4px;
+  }
+
+  .retro-theme .pd-chat-list-fullscreen .pd-chat-row {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .retro-theme .pd-chat-list-fullscreen .pd-chat-row:first-child {
+    padding-top: 8px;
+  }
+
+  .retro-theme .pd-chat-fullscreen-main .pd-chat-role,
+  .retro-theme .pd-chat-role {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 10px;
+  }
+
+  .retro-theme .pd-chat-form-fullscreen {
+    grid-template-columns: minmax(0, 1fr) 64px;
+    gap: 7px;
+    padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
+  }
+
+  .retro-theme .pd-chat-form-fullscreen .pd-chat-input {
+    height: 46px;
+    min-height: 46px;
+    max-height: 24dvh;
+  }
+
+  .retro-theme .pd-chat-form-fullscreen .pd-chat-send {
+    width: 64px;
+    min-width: 64px;
+    height: 44px;
+    min-height: 44px;
+  }
+
+  .retro-theme .pd-chat-fullscreen-sidebar {
+    padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    box-shadow: none;
+  }
+
+  .retro-theme .pd-chat-fullscreen-sidebar-head {
+    margin: -10px -12px 0;
+  }
+}
+
+/* Chat header shorthands above intentionally stay compact; restore the shared texture last. */
+.retro-theme .pd-chat-fullscreen-main-head,
+.retro-theme .pd-chat-fullscreen-sidebar-head {
+  color: var(--retro-surface);
+  background-color: var(--retro-grid-base);
+  background-image: var(--retro-grid-pattern), var(--retro-grid-gradient);
+  background-position: 0 0, 4px 4px, 0 0;
+  background-size: 8px 8px, 8px 8px, 100% 100%;
+}
+
+/* Keep header controls and chat bubbles above all earlier flat-theme shorthands. */
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-sidebar-collapse,
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-sidebar-close {
+  border: 2px solid #242421;
+  color: #242421;
+  background-color: #fffdf8;
+  background-image: none;
+  box-shadow: inset 1px 1px 0 #fff, inset -2px -2px 0 #b9b3a7;
+  opacity: 1;
+}
+
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-sidebar-collapse:hover:not(:disabled),
+.retro-theme .pd-chat-fullscreen-sidebar-head .pd-chat-sidebar-close:hover:not(:disabled) {
+  color: #111;
+  background-color: #e9e3d8;
+}
+
+.retro-theme .pd-chat-bubble,
+.retro-theme .pd-chat-fullscreen-main .pd-chat-bubble {
+  box-shadow: 3px 3px 0 rgba(89, 87, 80, 0.42);
+}
+
+.retro-theme .pd-chat-role,
+.retro-theme .pd-chat-fullscreen-main .pd-chat-role {
+  box-shadow: 3px 3px 0 rgba(89, 87, 80, 0.42);
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble,
+.retro-theme .pd-chat-fullscreen-main .pd-chat-message-user .pd-chat-bubble {
+  background-color: #c3ef83;
+}
+
+.retro-theme .pd-chat-message-user .pd-chat-bubble::before {
+  box-shadow: -3px 3px 0 #c3ef83;
+}
+
+.retro-theme .pd-chat-session-item-active {
+  border-color: var(--retro-chat-border);
+  background-color: #eae2cf;
+  background-image: none;
+}
+
+.retro-theme :where(
+  .pd-panel-head,
+  .pd-grid-head,
+  .card-header,
+  .modal-header,
+  .pd-chat-fullscreen-main-head,
+  .pd-chat-fullscreen-sidebar-head
+) {
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 3px 0 rgba(47, 47, 44, 0.28);
+}
+
+/* Flat profile sidebar: use the same light surfaces as the normal view. */
+.retro-theme .app-sidebar-frame {
+  border-right: 1px solid var(--retro-border);
+  background: var(--retro-panel);
+  box-shadow: none;
+}
+
+.retro-theme .profile-sidebar {
+  padding: 12px;
+  color: var(--retro-text);
+  background: var(--retro-panel);
+}
+
+.retro-theme .profile-sidebar-head {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  color: var(--retro-text);
+  background: transparent;
+}
+
+.retro-theme .profile-sidebar-title {
+  border: 1px solid var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-user);
+}
+
+.retro-theme :where(.profile-sidebar-close, .profile-editor-toggle) {
+  border: 1px solid var(--retro-border);
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  background-image: none;
+  box-shadow: none;
+}
+
+.retro-theme :where(.profile-sidebar-close, .profile-editor-toggle):hover:not(:disabled) {
+  color: var(--retro-text);
+  background: #eae2cf;
+}
+
+.retro-theme .profile-list-shell {
+  border: 1px solid var(--retro-border);
+  background: var(--retro-surface);
+  box-shadow: none;
+}
+
+.retro-theme .profile-list-item {
+  border: 1px solid var(--retro-border-soft);
+  color: var(--retro-text);
+  background: var(--retro-surface);
+  background-image: none;
+  box-shadow: none;
+}
+
+.retro-theme .profile-list-item:hover,
+.retro-theme .profile-list-item-active {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background: #eae2cf;
+  background-image: none;
+}
+
+.retro-theme .profile-list-item-zodiac {
+  border-width: 1px;
+  box-shadow: none;
+}
+
+/* Precision tables follow the established normal-table palette. */
+.retro-theme :where(
+  .pd-panel-head,
+  .pd-grid-head,
+  .pd-flow-cluster .pd-grid-head,
+  .card-header
+) {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background-color: var(--retro-panel-deep);
+  background-image: none;
+  box-shadow: 0 2px 0 var(--retro-border-soft);
+}
+
+.retro-theme :where(.pd-panel-title, .pd-grid-title, .card-header) {
+  color: var(--retro-text);
+  text-shadow: none;
+}
+
+.retro-theme .pd-panel-caption {
+  color: var(--retro-text);
+}
+
+.retro-theme :where(th, .pd-overview-head, .pd-flow-column-top) {
+  border-color: var(--retro-border);
+  color: var(--retro-text);
+  background-color: var(--retro-panel-deep);
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.retro-theme :where(
+  .pd-overview-side,
+  .pd-overview-relation-side,
+  .pd-overview-relation-collapsed,
+  .pd-flow-board-side-top,
+  .pd-flow-board-side-main,
+  table:not(.table-gouka) > tbody > tr > td:first-child
+) {
+  color: var(--retro-text);
+  background-color: var(--retro-panel-deep);
+  background-image: none;
+  text-shadow: none;
+}
+
+.retro-theme :where(table, .pd-overview-cell, .pd-flow-column, .pd-flow-column-bottom) {
+  background-color: var(--retro-surface);
+}
+
+/* Mobile conversation-list control must remain legible on the dark chat header. */
+.retro-theme .pd-chat-fullscreen-main-head .pd-chat-sidebar-toggle {
+  border: 2px solid #242421;
+  color: #242421;
+  background-color: #fffdf8;
+  background-image: none;
+  box-shadow: inset 1px 1px 0 #fff, inset -2px -2px 0 #b9b3a7;
+  opacity: 1;
+}
+
+.retro-theme .pd-chat-fullscreen-main-head .pd-chat-sidebar-toggle:hover:not(:disabled) {
+  border-color: #111;
+  color: #111;
+  background-color: #e9e3d8;
+}
+
+.retro-theme .pd-action-button.pd-chat-jump-latest {
+  border: 1px solid var(--retro-chat-border);
+  color: var(--retro-chat-text);
+  background-color: #ffffff;
+  background-image: none;
+  box-shadow: 2px 2px 0 rgba(89, 87, 80, 0.32);
+  opacity: 1;
+}
+
+.retro-theme .pd-action-button.pd-chat-jump-latest:hover:not(:disabled) {
+  color: var(--retro-chat-text);
+  background-color: #f3ecd8;
+  background-image: none;
+}
+
+/* Global parchment scrollbars with classic arrow buttons and a ridged thumb. */
+.retro-theme * {
+  scrollbar-color: #b7ac9c #f6f3ec;
+  scrollbar-width: auto;
+}
+
+.retro-theme *::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.retro-theme *::-webkit-scrollbar-track {
+  border: 1px solid #ccc2b3;
+  background: #f6f3ec;
+  box-shadow: inset 1px 0 0 #e5d7c1, inset -1px 0 0 #e5d7c1;
+}
+
+.retro-theme *::-webkit-scrollbar-thumb {
+  min-width: 24px;
+  min-height: 24px;
+  border: 2px solid #4f4e48;
+  border-radius: 0;
+  background-color: #cfc5b7;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #cfc5b7 0 2px,
+    #a69884 2px 3px,
+    #e5d7c1 3px 5px
+  );
+  box-shadow: inset 1px 1px 0 #f6f3ec, inset -1px -1px 0 #a69884;
+}
+
+html.retro-theme::-webkit-scrollbar-thumb:hover,
+html.retro-theme *::-webkit-scrollbar-thumb:hover {
+  background-color: #bfb4a3;
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button,
+html.retro-theme *::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #ccc2b3;
+  background-color: #f4f0e9;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 12px 12px;
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button:vertical:decrement,
+html.retro-theme *::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a69884' d='M1 8.5 6 3l5 5.5z'/%3E%3C/svg%3E");
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button:vertical:increment,
+html.retro-theme *::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a69884' d='m1 3.5 5 5.5 5-5.5z'/%3E%3C/svg%3E");
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button:horizontal:decrement,
+html.retro-theme *::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a69884' d='M8.5 1 3 6l5.5 5z'/%3E%3C/svg%3E");
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button:horizontal:increment,
+html.retro-theme *::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a69884' d='M3.5 1 9 6l-5.5 5z'/%3E%3C/svg%3E");
+}
+
+html.retro-theme::-webkit-scrollbar-button:single-button:hover,
+html.retro-theme *::-webkit-scrollbar-button:single-button:hover {
+  background-color: #e5d7c1;
+}
+
+html.retro-theme::-webkit-scrollbar-corner,
+html.retro-theme *::-webkit-scrollbar-corner {
+  border: 1px solid #ccc2b3;
+  background: #f4f0e9;
+}

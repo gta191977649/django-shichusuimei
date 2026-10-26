@@ -1,5 +1,6 @@
 import datetime
 import json
+import math
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -22,6 +23,101 @@ from suimei.service.prompt_builder import (
     format_gouka_reference,
     format_shin_type_reference,
 )
+from suimei.constants.five_element import MONTH_MATRIX
+from suimei.service.five_element_energy import calculate_daily_energy, calculate_natal_energy, calculate_personalized_energy, calculate_personalized_range, seasonal_month_vector
+
+
+class FiveElementEnergyApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.birth = {"birthDate": "1995-06-15", "birthTime": "14:30"}
+
+    def test_single_day_returns_one_normalized_point(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "start": "2026-01-01", "end": "2026-01-01"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertAlmostEqual(sum(response.data["data"][0]["energy"].values()), 100.0, places=6)
+        self.assertIn("entropy", response.data["natal"])
+        self.assertIn("balanceIndex", response.data["natal"])
+        self.assertAlmostEqual(response.data["natal"]["entropy"] / math.log(5) * 100, response.data["natal"]["balanceIndex"], places=6)
+
+    def test_full_non_leap_year_has_365_days(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "start": "2026-01-01", "end": "2026-12-31"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 365)
+
+    def test_flow_year_returns_twelve_ganzhi_month_axis_ticks(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "range": "flow_year", "anchor": "2026-08-29"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["timeAxis"]["mode"], "flow_year")
+        self.assertEqual(len(response.data["timeAxis"]["ticks"]), 12)
+        self.assertEqual(response.data["count"], 12)
+
+    def test_flow_month_returns_daily_pillar_axis_ticks(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "range": "flow_month", "anchor": "2026-08-29"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["timeAxis"]["mode"], "flow_month")
+        self.assertEqual(len(response.data["timeAxis"]["ticks"]), response.data["count"])
+        self.assertTrue(all(len(label.splitlines()) == 4 for label in response.data["timeAxis"]["ticks"].values()))
+
+    def test_flow_day_returns_the_current_week_with_daily_pillars(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "range": "flow_day", "anchor": "2026-08-29"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 7)
+        self.assertEqual(response.data["timeAxis"]["currentDate"], "2026-08-29")
+        self.assertEqual(len(response.data["timeAxis"]["ticks"]), 7)
+
+    def test_leap_year_has_366_days(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "start": "2024-01-01", "end": "2024-12-31"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 366)
+
+    def test_gregorian_month_changes_at_calendar_boundary(self):
+        jan = calculate_daily_energy(datetime.date(2026, 1, 31))
+        feb = calculate_daily_energy(datetime.date(2026, 2, 1))
+        self.assertEqual(jan["month"], 1)
+        self.assertEqual(feb["month"], 2)
+        self.assertEqual(MONTH_MATRIX[jan["month"]], MONTH_MATRIX[1])
+        self.assertEqual(MONTH_MATRIX[feb["month"]], MONTH_MATRIX[2])
+
+    def test_gregorian_month_vector_is_continuous_across_month_boundary(self):
+        jul_31 = seasonal_month_vector(datetime.date(2026, 7, 31))
+        aug_1 = seasonal_month_vector(datetime.date(2026, 8, 1))
+        self.assertLess(max(abs(jul_31[element] - aug_1[element]) for element in jul_31), 0.05)
+
+    def test_fourier_seasonal_vector_is_continuous_at_year_boundary(self):
+        dec_31 = seasonal_month_vector(datetime.date(2026, 12, 31))
+        jan_1 = seasonal_month_vector(datetime.date(2027, 1, 1))
+        self.assertLess(max(abs(dec_31[element] - jan_1[element]) for element in dec_31), 0.05)
+
+    def test_invalid_ranges_return_a_client_error(self):
+        response = self.client.get("/api/five-element-energy/", {**self.birth, "start": "2026-02-01", "end": "2026-01-01"})
+        self.assertEqual(response.status_code, 400)
+
+    def test_natal_is_normalized_and_personalizes_same_flow_day(self):
+        first = calculate_natal_energy(datetime.datetime(1995, 6, 15, 14, 30))
+        second = calculate_natal_energy(datetime.datetime(2001, 1, 4, 9, 15))
+        self.assertAlmostEqual(sum(first.energy.values()), 100.0, places=6)
+        self.assertEqual(first, calculate_natal_energy(datetime.datetime(1995, 6, 15, 14, 30)))
+        first_day = calculate_personalized_energy(first, datetime.date(2026, 8, 29))
+        second_day = calculate_personalized_energy(second, datetime.date(2026, 8, 29))
+        self.assertEqual(first_day["temporal"], second_day["temporal"])
+        self.assertNotEqual(first_day["energy"], second_day["energy"])
+        self.assertAlmostEqual(sum(first_day["energy"].values()), 100.0, places=6)
+
+    def test_strength_and_trend_are_independent_from_composition(self):
+        natal = calculate_natal_energy(datetime.datetime(1995, 6, 15, 14, 30))
+        point = calculate_personalized_energy(natal, datetime.date(2026, 8, 29))
+        self.assertNotAlmostEqual(sum(point["strength"].values()), 100.0, places=3)
+        self.assertAlmostEqual(sum(point["energy"].values()), 100.0, places=6)
+        for element in point["trend"]:
+            self.assertAlmostEqual(point["trend"][element], (point["strength"][element] / natal.energy[element] - 1) * 100)
+
+    def test_ema_starts_at_raw_value(self):
+        natal = calculate_natal_energy(datetime.datetime(1995, 6, 15, 14, 30))
+        points = calculate_personalized_range(natal, datetime.date(2026, 8, 1), datetime.date(2026, 8, 2))
+        self.assertEqual(points[0]["ma7"], points[0]["energy"])
+        self.assertEqual(points[0]["trendEma7"], points[0]["trend"])
 
 
 TEST_BIRTHDATE = datetime.datetime(1997, 2, 14, 2, 25)

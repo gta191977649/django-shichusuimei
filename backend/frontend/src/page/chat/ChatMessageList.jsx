@@ -31,13 +31,27 @@ const ChatReasoningDetails = memo(function ChatReasoningDetails({ reasoning }) {
 });
 
 export const MessageRow = memo(function MessageRow({ message }) {
+  const isStreaming = message.status === "sending" || message.status === "streaming";
+
   return (
     <div className={`pd-chat-message pd-chat-message-${message.role}`}>
       <div className="pd-chat-role">{message.role === "user" ? "あなた" : "AI"}</div>
       <div className="pd-chat-bubble display-linebreak">
-        <MarkdownContent>{message.content}</MarkdownContent>
+        {message.role === "assistant" && isStreaming ? (
+          message.content ? (
+            <div className="pd-chat-stream-text">{message.content}</div>
+          ) : (
+            <div className="pd-chat-loading">
+              <span className="pd-spinner" aria-hidden="true"></span>
+              <span>回答を生成中...</span>
+            </div>
+          )
+        ) : (
+          <MarkdownContent>{message.content}</MarkdownContent>
+        )}
         {message.role === "assistant" ? <ChatReasoningDetails reasoning={message.reasoning} /> : null}
-        {message.typing ? <span className="pd-chat-cursor" aria-hidden="true"></span> : null}
+        {message.error ? <div className="pd-chat-message-error">{message.error}</div> : null}
+        {message.typing && message.content ? <span className="pd-chat-cursor" aria-hidden="true"></span> : null}
       </div>
     </div>
   );
@@ -51,8 +65,6 @@ export default function ChatMessageList({
   hasMore,
   historyError,
   onRetryHistory,
-  loadingReply,
-  chatTyping,
   listRef,
   extraClass = "",
   firstItemIndex,
@@ -112,14 +124,14 @@ export default function ChatMessageList({
         style={{ height: isFullscreen ? "100%" : "420px" }}
         data={messages}
         firstItemIndex={firstItemIndex}
-        computeItemKey={(index, message) => message.id ?? `${message.role}-${index}`}
+        computeItemKey={(index, message) => message.uiKey ?? (message.id != null ? `server:${message.id}` : `${message.role}-${index}`)}
         startReached={onLoadOlder}
         atBottomThreshold={atBottomThreshold}
         atBottomStateChange={onBottomStateChange}
         followOutput={followOutput}
         increaseViewportBy={{ top: 400, bottom: 600 }}
         itemContent={(index, message) => (
-          <div className="pd-chat-row" data-message-id={message.id ?? index}>
+          <div className="pd-chat-row" data-message-id={message.uiKey ?? message.id ?? index}>
             <MessageRow message={message} />
           </div>
         )}
@@ -151,18 +163,6 @@ export default function ChatMessageList({
 
             return <div className="pd-chat-history-hint">これ以上古い会話はありません。</div>;
           },
-          Footer: () =>
-            loadingReply && !chatTyping ? (
-              <div className="pd-chat-row">
-                <div className="pd-chat-message pd-chat-message-assistant">
-                  <div className="pd-chat-role">AI</div>
-                  <div className="pd-chat-bubble pd-chat-loading">
-                    <span className="pd-spinner" aria-hidden="true"></span>
-                    <span>回答を生成中...</span>
-                  </div>
-                </div>
-              </div>
-            ) : null,
         }}
       />
       {showJumpToLatest ? (

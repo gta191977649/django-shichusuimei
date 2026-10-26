@@ -1,7 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Kaisei+Opti:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=BIZ+UDGothic:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -317,7 +313,7 @@ rb, rt {
     background: rgba(0, 0, 0, 0.28);
   }
 
-  .app-main.is-sidebar-open {
+.app-main.is-sidebar-open {
     overflow: hidden;
   }
 
@@ -360,6 +356,37 @@ rb, rt {
   position: relative;
   z-index: 2;
 }
+
+.daiun-line-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.daiun-line-page h1, .daiun-line-page h2 { margin: 0 0 10px; }
+.daiun-line-description, .daiun-line-note { margin: 0 0 18px; line-height: 1.7; }
+.daiun-line-note { font-size: 13px; }
+.daiun-line-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 18px; }
+.daiun-line-controls label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; }
+.daiun-line-controls input, .daiun-line-mode button { border: 1px solid #000; padding: 6px 9px; font: inherit; background: #fff; color: #000; }
+.daiun-line-mode { display: flex; flex-wrap: wrap; gap: 4px; }
+.daiun-line-mode button { cursor: pointer; font-weight: 700; }
+.daiun-line-mode button.is-active { background: #ccffcc; }
+.daiun-line-section { margin: 20px 0; }
+.daiun-line-section h2 small { font-size: 13px; font-weight: 400; }
+.daiun-line-natal { border: 1px solid #000; padding: 12px; margin: 18px 0; }
+.daiun-line-pillars, .daiun-line-elements { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.daiun-line-pillars span, .daiun-line-elements span { display: flex; flex-direction: column; gap: 3px; border: 1px solid #000; padding: 6px 10px; min-width: 86px; }
+.daiun-line-elements span { border-width: 2px; }
+.entropy-scale { display: flex; width: min(100%, 460px); overflow: hidden; border: 2px solid #000; font-size: 18px; font-weight: 700; line-height: 1.15; }
+.entropy-scale-uncertain, .entropy-scale-certain { box-sizing: border-box; min-width: 0; padding: 4px 8px; text-align: center; white-space: nowrap; }
+.entropy-scale-uncertain { color: #fff; background: #000; }
+.entropy-scale-certain { color: #000; background: #e9eaec; }
+.daiun-line-diagnostics { margin-top: 24px; border: 1px solid #000; padding: 10px; }
+.daiun-line-diagnostics summary { cursor: pointer; font-weight: 700; }
+.daiun-line-diagnostics section { margin-top: 18px; }
+.daiun-line-status, .daiun-line-error { border: 1px solid #000; padding: 10px; }
+.daiun-line-error { background: #ffd6d1; }
 
 .table-gouka td{
   border: 0px solid;
@@ -744,7 +771,8 @@ rb, rt {
 .profile-actions button,
 .profile-sidebar-close,
 .profile-editor-toggle,
-.profile-list-item {
+.profile-list-item,
+.profile-choice-item {
   border: 1px solid #000;
   padding: 8px 10px;
   font-weight: 700;
@@ -879,6 +907,253 @@ rb, rt {
 
 .profile-list-shell .profile-list {
   margin-top: 0;
+}
+
+.profile-choice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-choice-state {
+  padding: 18px 10px;
+  color: #000;
+  text-align: center;
+}
+
+.profile-choice-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.profile-list-item-main {
+  display: inline-flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 6px;
+}
+
+.profile-list-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-list-item-gender {
+  flex: 0 0 auto;
+}
+
+.profile-list-item-gender.is-male {
+  color: #3979b9;
+}
+
+.profile-list-item-gender.is-female {
+  color: #d66a91;
+}
+
+.profile-list-item-details {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  color: #000;
+}
+
+.profile-list-item-details small {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.profile-list-item-zodiac {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #c9ad73;
+  border-radius: 50%;
+  color: #29445f;
+  background: #f7efdf;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.profile-choice-zodiac svg,
+.profile-list-item-zodiac svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  flex: 0 0 auto;
+}
+
+.profile-choice-item:hover,
+.profile-choice-item.is-active {
+  border-color: #000;
+}
+
+.profile-choice-item:hover {
+  background-image: linear-gradient(to bottom, #ffffff 0%, #dfd9c1 100%);
+}
+
+.profile-choice-item.is-active {
+  background-image: none;
+  background: #ccffcc;
+}
+
+.profile-choice-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.profile-choice-name {
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-choice-gender-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 20px;
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.profile-choice-gender-icon.is-male {
+  color: #3979b9;
+}
+
+.profile-choice-gender-icon.is-female {
+  color: #d66a91;
+}
+
+.profile-choice-date,
+.profile-choice-time {
+  color: #000;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.profile-choice-pillars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(30px, 1fr));
+  gap: 1px 6px;
+  min-width: 82px;
+  color: #999;
+  font-size: 18px;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.profile-choice-pillar {
+  display: inline-flex;
+  justify-content: center;
+  gap: 1px;
+}
+
+.profile-choice-pillars .is-wood {
+  color: forestgreen;
+}
+
+.profile-choice-pillars .is-fire {
+  color: #e64841;
+}
+
+.profile-choice-pillars .is-earth {
+  color: saddlebrown;
+}
+
+.profile-choice-pillars .is-metal {
+  color: darkorange;
+}
+
+.profile-choice-pillars .is-water {
+  color: royalblue;
+}
+
+.profile-choice-pillars > span:last-child:only-child {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.profile-choice-zodiac {
+  display: inline-flex;
+  flex: 0 0 48px;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #c9ad73;
+  border-radius: 50%;
+  color: #29445f;
+  background: #f7efdf;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.profile-choice-zodiac.is-air,
+.profile-list-item-zodiac.is-air {
+  border-color: #8fcbdc;
+  color: #4d9eb3;
+  background: #e6f6fa;
+}
+
+.profile-choice-zodiac.is-water,
+.profile-list-item-zodiac.is-water {
+  border-color: #1f4e79;
+  color: #1f4e79;
+  background: #dceaf5;
+}
+
+.profile-choice-zodiac.is-earth,
+.profile-list-item-zodiac.is-earth {
+  border-color: #9a6a3a;
+  color: #7b512c;
+  background: #f1e4d4;
+}
+
+.profile-choice-zodiac.is-fire,
+.profile-list-item-zodiac.is-fire {
+  border-color: #d85a4a;
+  color: #c74436;
+  background: #fde6e2;
+}
+
+.profile-sidebar .profile-choice-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
+}
+
+.profile-sidebar .profile-choice-pillars {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  justify-self: end;
+  min-width: 82px;
+  font-size: 16px;
+}
+
+.profile-sidebar .profile-choice-zodiac {
+  grid-column: 2;
+  grid-row: 1;
+  width: 44px;
+  height: 44px;
+  flex-basis: 44px;
+  font-size: 25px;
 }
 
 .profile-list-item {

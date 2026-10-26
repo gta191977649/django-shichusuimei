@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+/* eslint-disable react/prop-types */
+import { useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -11,6 +12,27 @@ import {
   Legend
 } from 'chart.js';
 
+const currentDateMarker = {
+  id: 'currentDateMarker',
+  afterDatasetsDraw(chart, _args, options) {
+    if (options?.index === undefined || options.index < 0) return;
+    const x = chart.scales.x.getPixelForValue(options.index);
+    const { top, bottom } = chart.chartArea;
+    const { ctx } = chart;
+    ctx.save();
+    ctx.strokeStyle = '#e64841';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#e64841';
+    ctx.font = 'bold 12px "Noto Sans JP", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(options.label || '今日', x, top + 14);
+    ctx.restore();
+  },
+};
+
 // Register chart components
 ChartJS.register(
   CategoryScale,
@@ -19,7 +41,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  currentDateMarker
 );
 
 // Set default font and color
@@ -33,8 +56,26 @@ ChartJS.defaults.color = '#000';
  * - chartHeight: Height of the chart container in pixels or CSS value (default: 400)
  * - chartWidth: Width of the chart container in pixels or CSS value (default: '100%')
  */
-export default function DaiunTrend({ response, defaultVisible = ['木'], chartHeight = 300, chartWidth = '100%' }) {
+export default function DaiunTrend({ response, defaultVisible = ['木'], chartHeight = 300, chartWidth = '100%', series = null, labels: customLabels = null, title = '運勢線', tooltipCallbacks = null, yScale = null, zeroBaseline = false, xTickCallback = null, highlightIndex = -1, highlightLabel = '今日', maxXTickCount = 12, xTicksVertical = false }) {
   const chartRef = useRef();
+
+  if (series && customLabels) {
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: { display: Boolean(title), text: title, color: '#000', font: { family: '"Noto Serif JP", serif', size: 16 } },
+        legend: { position: 'bottom', labels: { color: '#000', font: { family: '"Noto Serif JP", serif' } } },
+        tooltip: tooltipCallbacks ? { callbacks: tooltipCallbacks } : undefined,
+        currentDateMarker: { index: highlightIndex, label: highlightLabel },
+      },
+      scales: {
+        x: { ticks: { color: '#000', maxTicksLimit: maxXTickCount, autoSkip: !xTicksVertical, minRotation: xTicksVertical ? 0 : undefined, maxRotation: xTicksVertical ? 0 : undefined, font: { size: xTicksVertical ? 11 : undefined }, callback: xTickCallback || undefined }, grid: { color: '#ddd' } },
+        y: { min: yScale?.min, max: yScale?.max, ticks: { color: '#000' }, grid: { color: (context) => zeroBaseline && context.tick.value === 0 ? '#000' : '#ddd', lineWidth: (context) => zeroBaseline && context.tick.value === 0 ? 2 : 1 } },
+      },
+    };
+    return <div className='tb-box' style={{ width: chartWidth, height: chartHeight }}><Line ref={chartRef} data={{ labels: customLabels, datasets: series }} options={options} /></div>;
+  }
 
   if (!response?.trend?.daiun || !response?.trend?.suiun) return <></>;
 
@@ -92,7 +133,7 @@ export default function DaiunTrend({ response, defaultVisible = ['木'], chartHe
         // ← 在这里添加标题配置
         title: {
             display: true,
-            text: '運勢線',
+            text: title,
             color: '#000',
             font: {
             family: '"Noto Serif JP", serif',
